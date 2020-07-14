@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+    <head><meta name="generator" content="Hexo 3.9.0">
+        <title>Fixing a bug in an 18 year old Shockwave game</title>
+<link rel="stylesheet" type="text/css" href="/css/normalize.css">
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+        <div id="container">
+            <header>
+    <h2><a href="/./">Matt's Blog</a></h2>
+</header>
+            <article>
+    <div id="article-header">
+        <h1>Fixing a bug in an 18 year old Shockwave game</h1>
+        <h2>The story of changing a single byte</h2>
+        <div class="published">
+            <span title="Published on 10/6/2018 8:22 PM">
+                October 6th, 2018
+                - 
+                13 min read
+            </span>
+        </div>
+        
+    </div>
+    <blockquote>
+<p>It felt like unearthing a buried tomb and finding an untouched puzzle inside.
+One that would have otherwise been lost to time without ever being solved.</p>
+</blockquote>
+<h2 id="Cartoon-Cartoon-Summer-Resort"><a href="#Cartoon-Cartoon-Summer-Resort" class="headerlink" title="Cartoon Cartoon Summer Resort"></a>Cartoon Cartoon Summer Resort</h2><p>It was the summer of 2000.
+I was 6 years old, and 
+I had just passed the 1<sup>st</sup> grade and starting summer break.
+This meant long days of playing outside, watching cartoon marathons,
+and booting up my dad’s Windows 98 computer to browse for games to play
+on a brand new frontier called the “Internet”.
+Cartoon Network’s website was one of my favorites. 
+They had immersive flash games that were designed around the cartoons on TV.
+That summer they released a series of games called “Cartoon Cartoon Summer Resort”.</p>
+<div class="image-row">
+<iframe width="560" height="315" src="https://www.youtube.com/embed/JcEcJpV6Rvs" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+</div>
+<div class="subtitle">
+Gameplay of the first Episode of Cartoon Cartoon Summer Resort
+</div>
+
+<p>The game was a top-down 2D RPG/adventure game that had 4 episodes.
+You played as a cartoon character who is on vacation at a resort with other cartoon characters.
+In each episode there is a problem to solve at the resort.
+You must help solve it by interacting with the characters and finding/trading items.</p>
+<h2 id="Fast-forward-18-years"><a href="#Fast-forward-18-years" class="headerlink" title="Fast forward 18 years"></a>Fast forward 18 years</h2><p>I remembered this game a while ago during a nostalga trip and I knew that I had to play it again.
+The game is nearly 2 decades old so it was hard to find a working link.</p>
+<p>Also, no modern browser would run the ancient and vulnerability prone Shockwave player… except for Internet Explorer. 
+I may be the first person to have finally found a legitimate reason to use Internet Exploerer in 2018.</p>
+<p>After playing the game for a bit, There were some things that became impossible to ignore.
+For example, the repetitive background music that plays in an infinite loop, and the poor collision detection.</p>
+<h2 id="The-Bug"><a href="#The-Bug" class="headerlink" title="The Bug"></a>The Bug</h2><p>After a while I discovered a bug in the game:</p>
+<p><strong>Walking in areas where nothing should happen would sometimes prompt game dialogue to appear.</strong></p>
+<p>As you can see below, you are able to rent a boat in the game to travel on the water.
+When trying to rent another boat, it says “No more boats to rent today!”.
+If you travel north and walk along the right edge of the island,
+it will randomly trigger the same text that was meant for the boat dock.</p>
+<div class="image-row">
+
+<p><img src="./bug.gif" alt></p>
+</div>
+
+<p>Now at this point, any sane person with a healthy respsect for their time and energy
+would write this off as a mild annoyance, remind themselves that 
+this was a low-budget web game made for children 2 decades ago, and continue playing.
+But not me.</p>
+<p>Looking at the game with the knowledge I now have of programming,
+I found this ancient bug oddly mesmerizing.
+It felt like unearthing a buried tomb and finding an untouched puzzle inside.
+One that would have otherwise been lost to time without ever being solved.
+For me, fixing this bug was an opportunity for learning and discovery. 
+Interestingly, this is exactly what <em>playing</em> the game offered to me as a kid.
+It’s poetic how something can unintentionally offer entirely new challenges depending on how you look at it.</p>
+<h2 id="Deconstructing-the-Game"><a href="#Deconstructing-the-Game" class="headerlink" title="Deconstructing the Game"></a>Deconstructing the Game</h2><p>In order to fix the bug, I needed to figure out how the game worked under the hood.
+After doing some research, I learned that the game was a Shockwave game made with <a href="https://en.wikipedia.org/wiki/Adobe_Director" target="_blank" rel="noopener">Director</a>.
+When using Director, projects are saved as a <code>.dir</code> (Director) file.
+This file is similar to a PSD file for Photoshop.
+In the same way that a PSD file would hold non-destructive layer and text information,
+the <code>.dir</code> project saves all assets, raw source code, and other information to aide in the development process.
+Director used a proprietary scripting language called
+<a href="https://en.wikipedia.org/wiki/Lingo_(programming_language)" target="_blank">Lingo</a>
+to animate scenes.</p>
+<p>If the game was saved as a <code>.dir</code> file, I would simply be able to open it
+in Director and easily see how the game works.
+However, the game was published as a <code>.dcr</code> file.
+The <code>.dcr</code> file is a compiled version of a Director project.
+This means that all of the source code has been compiled into bytecode that runs on the Shockwave platform.
+This process is similar to how a PSD file can be flattened into a PNG image.
+The PNG image (DCR file in this case) is smaller, has no layer or editing information, and is only meant to be distributed.</p>
+<p>This meant that I was stuck with a 500kB binary blob with no documentation on how it was structured.
+Even if I did figure out how to find the low-level bytecode,
+it didn’t look like there was anyone who
+had reverse engineered Lingo bytecode or even documented how the Shockwave platform works.
+All of this information is proprietary and owned by Adobe who has no reason to release it.
+The prospects of figuring out how this game worked were looking pretty grim.</p>
+<h2 id="Decompression"><a href="#Decompression" class="headerlink" title="Decompression"></a>Decompression</h2><p>After feeling defeated by the fact that I wasn’t likely going to be able to solve the bug, I decided
+to see if there was any possible way to extract assets out of the game.
+I figured that there might be a chance I could find a compressed data section or something similar.
+After looking around, I found a few programs called <a href="https://aluigi.altervista.org/mytoolz.htm" target="_blank" rel="noopener">offzip and packzip</a>.
+These tools are able to search for zlib data in arbitrary binary files, show you the offsets,
+and extract them to separate files if they exist.</p>
+<p>I ran offzip on the DCR file and to my amazement it actually found archives!
+249 to be exact. </p>
+<pre><code class="hljs undefined">$ ./offzip.exe -a 1.dcr
+
+- open input file:    1.dcr
+- zip data to check:  32 bytes
+- zip windowBits:     15
+- seek offset:        0x00000000  (0)
++------------+-----+----------------------------+----------------------+
+| hex_offset | ... | zip -&gt; unzip size / offset | spaces before | info |
++------------+-----+----------------------------+----------------------+
+  0x00000026 . 164 -&gt; 214 / 0x000000ca _ 38 8:7:26:0:1:7b6349f6
+  0x000000d3 .. 3932 -&gt; 9169 / 0x0000102f _ 9 8:7:26:0:1:c1079d84
+  ...
+  0x00080490 . 265 -&gt; 472 / 0x00080599 _ 0 8:7:26:0:1:04d6b43f
+  0x00080599 . 209 -&gt; 366 / 0x0008066a _ 0 8:7:26:0:1:7da3ba08
+
+
+- 249 valid compressed streams found
+- 0x0004040d -&gt; 0x001565c8 bytes covering the 50% of the file</code></pre>
+
+<p>I extracted all of these files into a folder, and started looking at the results.
+There were 206 <code>.dat</code> files, 38 <code>.fff</code> files, 4 <code>.atn</code> files, and a single <code>.ini</code> file.</p>
+<div class="image-row">
+
+<p><img src="./decomp.png" alt></p>
+</div>
+
+<h2 id="Discoveries"><a href="#Discoveries" class="headerlink" title="Discoveries"></a>Discoveries</h2><p>I started with the INI file, but it had no value.
+It was just a font mapping table for Directory 7.0 between Windows and Mac.
+Next I moved on to the DAT files.
+Most of these were 1KB in size, so I started with the huge one that was
+144KB in size.
+I opened it in a hex editor and looked around.
+Most of it was unintelligible data.
+However, eventually I found some words mixed in that appeared to be Lingo identifiers</p>
+<div class="image-row">
+
+<p><img src="./lingohex.png" alt></p>
+</div>
+
+<p>Sifting through the large DAT files provided me with a few clues,
+and there were some interesting messages littered throughout it.
+I found out that they likely used Photoshop 3.0 for the graphics.
+They also had an internal map editing tool that was named
+<code>Map-O-Matic v1</code>. I wish I could see what that looked like
+and how it was made.</p>
+<p>I also discovered the name of the company who made the game:
+<a href="https://www.linkedin.com/company/funny-garbage/" target="_blank" rel="noopener">Funny Garbage</a>.
+The lead developer’s name was also in the file, who’s name I will omit.
+It felt good to solve the mystery of who made the game that I was furiously
+trying to fix nearly 20 years later and to put a face to the person
+who likely caused me this agony.
+All of these tidbits of information were nice to find,
+but they weren’t that helpful.</p>
+<h2 id="Breakthrough"><a href="#Breakthrough" class="headerlink" title="Breakthrough"></a>Breakthrough</h2><p>Next, I looked at the <code>.fff</code> files in the hex editor.
+To my great surprise, all of the data in these files
+was legible AND it looked like map data:</p>
+<div class="image-row">
+
+<p><img src="./maphex.png" alt></p>
+</div>
+
+<p>I manually extracted some of this data and prettied it up in a text editor.
+What I was left with was something that looks very similar to a JSON array:</p>
+<pre><code class="hljs undefined">[
+    #member: &quot;block.104&quot;,
+    #type: #FLOR,
+    #location: [16, 9],
+    #width: 64,
+    #WSHIFT: 0,
+    #height: 32,
+    #HSHIFT: 0,
+    #data: [
+        #item: [
+            #name: &quot;&quot;,
+            #type: #WALL,
+            #visi: [
+                #visiObj: &quot;&quot;,
+                #visiAct: &quot;&quot;,
+                #inviObj: &quot;&quot;,
+                #inviAct: &quot;&quot;
+            ],
+            #COND: [[#hasObj: &quot;&quot;, #hasAct: &quot;&quot;, #giveObj: &quot;sunscreen&quot;, #giveAct: &quot;gotscreen&quot;], #none, #none, #none]
+        ],
+        #move: [#U: 0, #d: 0, #L: 0, #R: 0, #COND: 1, #TIMEA: 0, #TIMEB: 0],
+        #message: [
+            [#text: &quot;You bought the sun screen.&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;&quot;],
+            [#text: &quot;No more sunscreen today!&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;gotscreen&quot;]
+        ]
+    ]
+]</code></pre>
+
+<p>This was critical, because I was able to deduce a lot about how the game worked from this.</p>
+<ol>
+<li>The game expects its map, text, and event data in JSON-like Lingo Objects</li>
+<li>Each <code>#member</code> entry is a tile, block, or character to be rendered.</li>
+<li>The <code>#member</code>‘s location offsets and dimensions are editable.</li>
+</ol>
+<p>Knowing that the game dialoge is saved in these files,
+I wrote a quick line to extract only the dialogue into a file:
+<code>grep -a -o &#39;#text: &quot;[^&quot;]*&#39; Uncompressed/*.fff | awk &#39;{print $0,&quot;\r&quot;}&#39; &gt; Dialogue.txt</code></p>
+<p>Using this file, I could easily search for the offending text,
+and also see which file it was in:</p>
+<div class="image-row">
+
+<p><img src="./dialogue.png" alt></p>
+</div>
+
+<p>The offending text is either in <code>0004eda0.fff</code> or <code>0004f396.fff</code>.
+In this case, the bugged text is in the first file.
+We know this because right under it is the message that you get
+when interacting with Og, who is the character in the same map as the bugged tile.</p>
+<h2 id="Fixing-the-Bug"><a href="#Fixing-the-Bug" class="headerlink" title="Fixing the Bug"></a>Fixing the Bug</h2><p>Now, I can open <code>0004eda0.fff</code> and search for the boat string in the hex editor.
+Once I find that, I can find the <code>#member</code> object that’s associated with it.
+I can now change its properties and save the file.
+Afterwards, I can recompress and patch it back into the original game DCR by using <code>packzip</code>.</p>
+<div class="image-row">
+
+<p><img src="./boathex1.png" alt></p>
+</div>
+
+<p><code>$ ./packzip -o 0x0004EDA0 Uncompressed/0004eda0.fff test.dcr</code></p>
+<p>When I change the block type from <code>block.11</code> to <code>block.13</code> and patch the game,
+we can clearly see the outline of the messed up tile:</p>
+<div class="image-row">
+
+<p><img src="./replace.png" alt></p>
+</div>
+<div class="subtitle">
+Changing the tile ID shows the bounds of the bugged area
+</div>
+
+<p>The actual fix for the bug is laughably simple.
+All I had to do was change the identifier for the <code>#message</code> to <code>#fessage</code> for that bugged tile:</p>
+<div class="image-row">
+
+<p><img src="./bugfix.gif" alt></p>
+</div>
+
+<p>Now, when we patch this in and walk back to that area,
+THERE ARE NO MORE MESSAGES!!!</p>
+<div class="image-row">
+
+<p><img src="./fixed.gif" alt></p>
+</div>
+<div class="subtitle">
+Fixing a bug in the game by literally editing 1 byte
+</div>
+
+<h2 id="How-does-that-fix-it"><a href="#How-does-that-fix-it" class="headerlink" title="How does that fix it?"></a>How does that fix it?</h2><p>In my best guess, the game engine probably checks the data for the tile that the player
+is standing on when he moves.
+If some condition passes, it will display the appropriate message in the <code>#message</code> array for that tile.
+By changing <code>#message</code> to <code>#fessage</code>, there is no longer any reference to a <code>#message</code> array
+when the code looks for it.
+It treats it as an empty (or undefined?) object and happily displays nothing.</p>
+<p>Consider this JS example:</p>
+<pre><code class="hljs js"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">foo</span>(<span class="hljs-params">bar</span>) </span>&#123;
+    <span class="hljs-keyword">if</span> (bar[<span class="hljs-string">"message"</span>] !== <span class="hljs-literal">undefined</span>) &#123;
+        <span class="hljs-comment">// display the message</span>
+    &#125;
+&#125;</code></pre>
+
+<p>Suppose we can’t change the function <code>foo()</code>, but we want to change the outcome.
+We do have access to the data that is passed to it.
+We can rename the passing object’s <code>message</code> property and the function will think it was never there.</p>
+<h2 id="How-did-the-bug-happen"><a href="#How-did-the-bug-happen" class="headerlink" title="How did the bug happen?"></a>How did the bug happen?</h2><p>My best guess is that it happened because of a simple oversight.
+They used a map editing tool to create each area.
+They very likely copied and pasted already finished maps to new areas and then tweaked them.
+That would have been easier than making them from scratch.
+But since the text and event data were mixed in, they likely overlooked it in some spots
+and forgot to remove it or change it.
+This makes the most sense, because the bugged out dialogue often originates from
+an adjacent map where it is used properly.</p>
+<h2 id="Why-did-you-put-so-much-effort-into-something-so-insignificant"><a href="#Why-did-you-put-so-much-effort-into-something-so-insignificant" class="headerlink" title="Why did you put so much effort into something so insignificant?"></a>Why did you put so much effort into something so insignificant?</h2><p>I don’t know. Nostalgia?</p>
+
+</article>
+        </div>
+    </body>
+</html>

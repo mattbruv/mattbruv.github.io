@@ -1,0 +1,33 @@
+.archive-post + .collection-title {
+  margin-top: 30px; }
+
+.archive-title.tag, .archive-title.category {
+  margin: 15px 0; }
+
+.archive-title .archive-name {
+  margin: 0;
+  display: inline-block;
+  font-weight: 400; }
+
+.collection-title .archive-year {
+  margin: 18px 0; }
+
+.archive-post {
+  margin: 15px 0; }
+  .archive-post .archive-post-time {
+    float: left;
+    overflow: hidden;
+    color: #aaa;
+    line-height: 25px;
+    display: block; }
+  .archive-post .archive-post-title {
+    margin-left: 85px;
+    display: block; }
+    .archive-post .archive-post-title .archive-post-link {
+      color: #333333; }
+  .archive-post::first-child {
+    margin-top: 20px; }
+  .archive-post .readtime {
+    color: #999;
+    font-size: smaller;
+    margin-left: 10px; }

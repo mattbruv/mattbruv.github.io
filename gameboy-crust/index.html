@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+    <head><meta name="generator" content="Hexo 3.9.0">
+        <title>Programming a Gameboy Color emulator</title>
+<link rel="stylesheet" type="text/css" href="/css/normalize.css">
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+        <div id="container">
+            <header>
+    <h2><a href="/./">Matt's Blog</a></h2>
+</header>
+            <article>
+    <div id="article-header">
+        <h1>Programming a Gameboy Color emulator</h1>
+        <h2></h2>
+        <div class="published">
+            <span title="Published on 01/14/2018 11:45 PM">
+                January 14th, 2018
+                - 
+                19 min read
+            </span>
+        </div>
+        
+    </div>
+    <p>Have you ever wanted to go back and replay that nostalgic video game from your past?
+As time goes on, it only gets more difficult (and expensive)
+to track down physical copies of these old systems and game cartridges from decades ago.
+If you kept looking for a way to play them despite this, you have likely discovered and used emulators.</p>
+<div class="image-row">
+    <img width="32%" src="./mario.png">
+    <img width="32%" src="./zelda.png">
+    <img width="32%" src="./tetris.png">
+</div>
+<div class="image-row">
+    <img src="./gbemu2.gif" width="24%">
+    <img src="./gbemu5.gif" width="24%">
+    <img src="./gbemu1.gif" width="24%">
+    <img src="./gbemu3.gif" width="24%">
+</div>
+
+<div class="subtitle">
+
+<p>Screenshots from my emulators,
+<a href="https://github.com/mattbruv/Gameboy-Crust" target="_blank" rel="noopener">Gameboy Crust</a>
+and original 
+<a href="https://github.com/mattbruv/Gameboy-Emulator" target="_blank" rel="noopener">GB emu</a>.</p>
+</div>
+
+<p>An emulator is a piece of software that enables programs for one system (the guest system)
+to run on an entirely different system (the host).
+Have you ever wondered how they work?
+Many people who have used emulators (my younger self included) tend to
+write them off as some kind of black magic witchcraft.
+However, taking the time to understand how an emulator works under the hood
+is an incredibly rewarding and educational experience in many ways.</p>
+<p>This page will describe what I learned during the process of developing an emulator for
+the Nintendo <a href="https://en.wikipedia.org/wiki/Game_Boy_Color" target="_blank" rel="noopener">Gameboy Color</a>.
+The host system can be any version of Linux/Windows/MacOS.
+Pseudocode will be presented in <a href="https://www.rust-lang.org/en-US/" target="_blank" rel="noopener">Rust</a> syntax.
+There are many systems that can be emulated,
+but the choice was easy for me since the Gameboy was my first videogame console.</p>
+<h2 id="Theory"><a href="#Theory" class="headerlink" title="Theory"></a>Theory</h2><p>The Gameboy, along with all old video game consoles, are nothing more than simple versions of computers.
+We know that a computer is a device that can carry out logical tasks.
+When we view the Gameboy as a computer, the video game cartridges are the ‘programs’
+that run on it and tell it which instructions to execute.</p>
+<p>An emulator works by virtualy representing the physical hardware of the guest machine.
+This means that in order to create an emulator for the Gameboy, we have to
+virtually simulate how the real hardware of the gameboy would function.
+With this in mind, let’s take a look at the hardware of the Gameboy and how it all
+interacts so we can form an understanding of how to emulate it in code.</p>
+<h2 id="Hardware"><a href="#Hardware" class="headerlink" title="Hardware"></a>Hardware</h2><p>The Gameboy has the following hardware features:</p>
+<ul>
+<li>8-bit Central Processing Unit</li>
+<li>32Kb Work Random Access Memory (RAM)</li>
+<li>16Kb Display RAM</li>
+<li>Liquid Crystal Display Screen</li>
+<li>Read Only Memory (ROM) AKA the external video game cartridge</li>
+<li>Joypad Input</li>
+<li>Audio Speaker</li>
+<li>Serial Transfer Port (link cable)</li>
+</ul>
+<h2 id="Memory"><a href="#Memory" class="headerlink" title="Memory"></a>Memory</h2><p>The Gameboy has a few different types of memory that need to all be emulated:</p>
+<ul>
+<li>Work RAM</li>
+<li>Video RAM</li>
+<li>Cartridge ROM</li>
+<li>External RAM</li>
+</ul>
+<p>Memory is one of the easiest things to implement in code.
+Regardless of what is actually being stored in each memory location, we represent it in the same way.
+We can equate a block of memory in the hardware to simply allocating <code>N</code> bytes of memory in our program:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>() -&gt; Wram &#123;
+	Wram &#123;
+		bytes: <span class="hljs-built_in">vec!</span>[<span class="hljs-number">0</span>; WRAM_SIZE],
+	&#125;
+&#125;</code></pre>
+
+<p>Then all we need are methods to read and write to our virtual memory.
+The Gameboy has a 16-bit address space, so we can use an unsigned 16-bit integer to index our memory:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">read</span></span>(&amp;<span class="hljs-keyword">self</span>, address: <span class="hljs-built_in">u16</span>) -&gt; <span class="hljs-built_in">u8</span> &#123;
+	<span class="hljs-keyword">self</span>.bytes[address <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>]
+&#125;
+
+<span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">write</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, address: <span class="hljs-built_in">u16</span>, data: <span class="hljs-built_in">u8</span>) &#123;
+	<span class="hljs-keyword">self</span>.bytes[address <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>] = data;
+&#125;</code></pre>
+
+<p>And that is all that is needed to emulate any kind of physical memory in the Gameboy.
+The only exception to this is the game cartridge which is read-only memory (ROM).
+Since this memory is read-only, we do not implement a write method.
+The ROM is still a contiguous buffer of data, but we read it in from a file instead of
+initializing an empty vector:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">load</span></span>(path: <span class="hljs-built_in">String</span>) -&gt; Rom &#123;
+	<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> buffer = <span class="hljs-built_in">Vec</span>::new();
+	<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> file = File::open(path).expect(<span class="hljs-string">"Invalid ROM path"</span>);
+	file.read_to_end(&amp;<span class="hljs-keyword">mut</span> buffer).expect(<span class="hljs-string">"Unable to read ROM"</span>);
+
+	Rom &#123;
+		bytes: buffer
+	&#125;
+&#125;</code></pre>
+
+<h2 id="Memory-Mapping"><a href="#Memory-Mapping" class="headerlink" title="Memory Mapping"></a>Memory Mapping</h2><p>But what is the point of writing many sub-allocations of memory?
+Why not just define the entire 64Kb of memory in one contiguous vector?</p>
+<p>The Gameboy hardware actually implements virtual memory via memory mapping.
+This means that logical blocks of memory can be swapped out, but the address range remains the same.
+This is powerful because the amount of useable memory is not bound by the limit of the address size (2^16 or 0xFFFF)</p>
+<p>Consider an example:
+The 8Kb of video RAM is defined in address space 0x8000 through 0x9FFF.
+By writing to a special register, the entire 8Kb of VRAM data can be swapped out at will for another bank of 8Kb.
+This effectively doubles our VRAM to 16Kb while using the same address space.</p>
+<p>Since the Gameboy has this scheme of memory management, we must also emulate it.
+This can be done by defining a struct that has control over all of our memory and interconnects them:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(_rom: Rom) -&gt; Interconnect &#123;
+	Interconnect &#123;
+		rom: _rom,
+		gpu: Gpu::new(),
+		wram: Wram::new(),
+		hram: Hram::new(),
+	&#125;
+&#125;</code></pre>
+
+<p>Now we can call <code>read</code> and <code>write</code> on any address and not have to care because
+the memory mapping and bank switching is handled automatically.</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">read</span></span>(&amp;<span class="hljs-keyword">self</span>, address: <span class="hljs-built_in">u16</span>) -&gt; <span class="hljs-built_in">u8</span> &#123;
+	<span class="hljs-keyword">match</span> address &#123;
+		ROM_START  ... ROM_BANK_END  =&gt; <span class="hljs-keyword">self</span>.rom.read(address), <span class="hljs-comment">// $0000...</span>
+		VRAM_START ... VRAM_END =&gt; <span class="hljs-keyword">self</span>.gpu.read(address),
+		ERAM_START ... ERAM_END =&gt; <span class="hljs-keyword">self</span>.rom.read(address),
+		WRAM_START ... WRAM_END =&gt; <span class="hljs-keyword">self</span>.wram.read(address),
+		ECHO_START ... ECHO_END =&gt; <span class="hljs-keyword">self</span>.wram.read(address),
+		OAM_START  ... OAM_END  =&gt; <span class="hljs-keyword">self</span>.gpu.read(address),
+		HRAM_START ... HRAM_END =&gt; <span class="hljs-keyword">self</span>.hram.read(address), <span class="hljs-comment">// ...$FFFF</span>
+		_ =&gt; <span class="hljs-built_in">panic!</span>(<span class="hljs-string">"Invalid Read"</span>)
+	&#125;
+&#125;</code></pre>
+
+<div class="subtitle">
+
+<p>Dynamic memory addressing. The <code>write</code> method is similar.</p>
+</div>
+
+<p>The responsibility of returning the correct data is now passed on to the individual memory modules.
+It is there that they match the address to the appropriate vector depending on the active memory bank.
+Since the processor relies on data from memory, it can make use of these methods and is emulated next.</p>
+<h2 id="CPU"><a href="#CPU" class="headerlink" title="CPU"></a>CPU</h2><p>The Gameboy CPU is a modified version of the 8-bit Zilog-Z80 microprocessor and has the following features:</p>
+<ul>
+<li>Eight 8-bit registers: A, B, C, D, E, F, H, L</li>
+<li>Two 16-bit registers: SP (Stack Pointer), PC (Program Counter)</li>
+</ul>
+<p>The 8-bit registers are each 1 byte of internal memory specifically designated for the CPU so it can quickly perform arithmetic.
+The PC register stores the address of the next CPU instruction to be executed.
+The SP register stores the top address of a LIFO stack. These registers can be represented easily:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Registers</span></span> &#123;
+	<span class="hljs-keyword">pub</span> a: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> f: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> b: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> c: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> d: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> e: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> h: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> l: <span class="hljs-built_in">u8</span>,
+	<span class="hljs-keyword">pub</span> sp: <span class="hljs-built_in">u16</span>,
+	<span class="hljs-keyword">pub</span> pc: <span class="hljs-built_in">u16</span>,
+&#125;</code></pre>
+
+<p>The CPU has hundreds of unique instructions that are indexed by an 8-bit value.
+Each instruction does something important, like performing arithmetic,
+loading data into memory, comparing values, etc.
+The CPU runs at 4.19 Megahertz which means that it performs 4.1 million cycles per second.
+To put that into perspective, my desktop computer has a 4 Gigahertz processor,
+which is over 1,000 times faster than the Gameboy’s CPU!</p>
+<p>Modern video game consoles are running at much higher speeds.
+this is why emulators for the Playstation, Xbox, or Wii tend to be slower.
+Not to mention that every single piece of hardware for modern consoles is becoming more and more advanced.
+This makes reverse engineering and emulating modern consoles an overwhelming challenge to say the least.</p>
+<p>But let’s get back to the archaic Gameboy. Each instruction has a varying amount of cycles that it takes.
+An average instruction takes about 4, 8, or 12 cycles depending on what it does.</p>
+<p>The instruction that the CPU will execute next is found at the memory location defined by the program counter (PC) register:</p>
+<pre><code class="hljs rust"><span class="hljs-comment">// Reads the next byte and increments the program counter</span>
+<span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">next_byte</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, memory: &amp;Interconnect) -&gt; <span class="hljs-built_in">u8</span> &#123;
+	<span class="hljs-keyword">let</span> byte = memory.read(<span class="hljs-keyword">self</span>.regs.pc);
+	<span class="hljs-keyword">self</span>.regs.pc = <span class="hljs-keyword">self</span>.regs.pc.wrapping_add(<span class="hljs-number">1</span>);
+	byte
+&#125;</code></pre>
+
+<p>The most important part of CPU emulation is the fetch/decode/execute procedure:</p>
+<pre><code class="hljs rust"><span class="hljs-comment">// Perform one step of the fetch-decode-execute cycle</span>
+<span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">step</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, memory: &amp;<span class="hljs-keyword">mut</span> Interconnect) -&gt; <span class="hljs-built_in">usize</span> &#123;
+	<span class="hljs-keyword">self</span>.handle_interrupts(memory);
+	<span class="hljs-keyword">let</span> opcode = <span class="hljs-keyword">self</span>.next_byte(memory);
+	<span class="hljs-comment">// decodes/excecutes each operation and returns cycles taken</span>
+	<span class="hljs-keyword">match</span> opcode &#123;
+		<span class="hljs-number">0x78</span> =&gt; &#123; <span class="hljs-keyword">self</span>.regs.a = <span class="hljs-keyword">self</span>.regs.b; <span class="hljs-number">4</span> &#125;, <span class="hljs-comment">// LD A, B</span>
+		<span class="hljs-number">0x79</span> =&gt; &#123; <span class="hljs-keyword">self</span>.regs.a = <span class="hljs-keyword">self</span>.regs.c; <span class="hljs-number">4</span> &#125;, <span class="hljs-comment">// LD A, C</span>
+		<span class="hljs-comment">// repeat for every instruction...</span>
+		_ =&gt; <span class="hljs-built_in">panic!</span>(<span class="hljs-string">"Unknown Opcode: $&#123;:02X&#125; @ $&#123;:04X&#125;"</span>, opcode, <span class="hljs-keyword">self</span>.regs.pc)
+	&#125;
+&#125;</code></pre>
+
+<p>This procedure reads the next instruction from memory and translates/carries out the task it represents. 
+Each branch returns the amount of cycles taken for that instruction.
+The Gameboy’s other hardware (video/audio/etc.) is all tied in with the processor speed.
+Keeping track of the cycles taken is important to keeping all other hardware in sync.</p>
+<h2 id="Video-Display"><a href="#Video-Display" class="headerlink" title="Video Display"></a>Video Display</h2><p>Interestingly, the Gameboy has a very smooth screen refresh rate of 60Hz.
+This means that the screen updates or draws a new frame to the LCD screen 60 times per second.
+Since we know how many times the CPU cycles per second,
+it is easy to time our video output.
+All that we have to do is divide the CPU cycles per second by the number of frames per second:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">const</span> CLOCK_SPEED: <span class="hljs-built_in">i32</span> = <span class="hljs-number">4194304</span>;
+<span class="hljs-keyword">const</span> FRAME_RATE: <span class="hljs-built_in">i32</span> = <span class="hljs-number">60</span>;
+
+<span class="hljs-keyword">let</span> cycles_per_frame = clock_speed / FRAME_RATE;</code></pre>
+
+<p>Then the GPU struct needs a variable to count the number of cycles since the last frame.
+Once this counter goes above <code>cycles_per_frame</code>, then we know that it is time to draw a frame to the screen.</p>
+<p>When the Gameboy is running, there are certain times when the video hardware is accessing video memory.
+Because games are not allowed to write to video memory when the GPU is reading from it, 
+it is important to emulate and keep track of these hardware timings. </p>
+<p>The Gameboy’s screen resolution is 160x144 pixels.
+A lot of the old video displays update the screen in <a href="https://en.wikipedia.org/wiki/Scan_line" target="_blank" rel="noopener">scan lines</a>
+going from left-to-right, top-to-bottom.
+Once a scanline is drawn, the beam goes through a <a href="https://en.wikipedia.org/wiki/Horizontal_blanking_interval" target="_blank" rel="noopener">horizontal blanking</a>
+period where it resets itself far left and one scanline down.
+Once it has drawn all 144 scanlines, it goes through the vertical blanking period
+and it resets itself at the top of the screen to start the process again.
+This rendering process can be emulated by keeping track of the modes.</p>
+<p>Special system interrupts are also called when the GPU starts doing something new.
+This is useful for programmers, because it enables programmers to have special per-scanline video effects.</p>
+<p>The meat and potatoes of our GPU is a function that keeps track of the emulated cycles and updates the
+internal state of the GPU accodringly.
+Once enough time has passed that a frame can be drawn, the internal framebuffer is cloned and passed
+to the emulator to be displayed.</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">cycles</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, cycles: <span class="hljs-built_in">usize</span>, interrupt: &amp;<span class="hljs-keyword">mut</span> InterruptHandler, video_sink: &amp;<span class="hljs-keyword">mut</span> VideoSink) &#123;
+	<span class="hljs-keyword">if</span> !<span class="hljs-keyword">self</span>.display_enabled() &#123;
+		<span class="hljs-keyword">return</span>;
+	&#125;
+	<span class="hljs-keyword">let</span> old_mode = <span class="hljs-keyword">self</span>.get_mode();
+	<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> new_mode: StatusMode;
+	<span class="hljs-keyword">self</span>.scanline_cycles += cycles;
+	<span class="hljs-keyword">self</span>.frame_cycles += cycles;
+	<span class="hljs-comment">// we are in vblank</span>
+
+	<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.frame_cycles &gt; FRAME_PERIOD &#123;
+		<span class="hljs-comment">// We have just entered the Vblank period</span>
+		<span class="hljs-keyword">if</span> old_mode != StatusMode::VBlank &#123;
+			<span class="hljs-keyword">self</span>.set_mode(StatusMode::VBlank);
+			<span class="hljs-comment">// Call the appropriate interrupt</span>
+			interrupt.request_interrupt(InterruptFlag::VBlank);
+			request_interrupt = <span class="hljs-keyword">self</span>.STAT.is_set(Bit::Bit4);
+			video_sink.append(<span class="hljs-keyword">self</span>.frame_buffer.clone());
+		&#125;
+		<span class="hljs-comment">// we have completed vblank period, reset everything, update sink</span>
+		<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.frame_cycles &gt; VBLANK_PERIOD &#123;
+			<span class="hljs-keyword">self</span>.scanline_cycles = <span class="hljs-number">0</span>;
+			<span class="hljs-keyword">self</span>.frame_cycles = <span class="hljs-number">0</span>;
+			<span class="hljs-keyword">self</span>.LY.clear();
+			<span class="hljs-keyword">self</span>.line_compare(interrupt);
+			<span class="hljs-keyword">self</span>.set_mode(StatusMode::Oam);
+		&#125;
+	&#125; <span class="hljs-keyword">else</span> &#123;
+		<span class="hljs-comment">// Update the scanline state</span>
+		<span class="hljs-keyword">match</span> <span class="hljs-keyword">self</span>.scanline_cycles &#123;
+			<span class="hljs-number">0</span> ... OAM_PERIOD =&gt; &#123; <span class="hljs-comment">// OAM</span>
+				<span class="hljs-keyword">if</span> old_mode != StatusMode::Oam &#123;
+					<span class="hljs-keyword">self</span>.set_mode(StatusMode::Oam);
+					request_interrupt = <span class="hljs-keyword">self</span>.STAT.is_set(Bit::Bit5);
+				&#125;
+			&#125;,
+			OAM_PERIOD ... TRANSFER_PERIOD =&gt; &#123; <span class="hljs-comment">// Transfer</span>
+				<span class="hljs-keyword">if</span> old_mode != StatusMode::Transfer &#123;
+					<span class="hljs-keyword">self</span>.set_mode(StatusMode::Transfer);
+					<span class="hljs-comment">// ransferring data from VRAM to screen.</span>
+					<span class="hljs-keyword">self</span>.update_scanline();
+				&#125;
+			&#125;,
+			TRANSFER_PERIOD ... HBLANK_PERIOD =&gt; &#123; <span class="hljs-comment">// H-Blank </span>
+				<span class="hljs-comment">// We have just entered H-Blank</span>
+				<span class="hljs-keyword">if</span> old_mode != StatusMode::HBlank &#123;
+					<span class="hljs-keyword">self</span>.set_mode(StatusMode::HBlank);
+					request_interrupt = <span class="hljs-keyword">self</span>.STAT.is_set(Bit::Bit3);
+				&#125;
+			&#125;,
+			_ =&gt; &#123;&#125;,
+		&#125;
+	&#125;
+
+	<span class="hljs-comment">// request an interrupt if we need to</span>
+	<span class="hljs-keyword">if</span> request_interrupt &#123;
+		interrupt.request_interrupt(InterruptFlag::Lcdc);
+	&#125;
+
+	<span class="hljs-comment">// If we have finished the H-Blank period, we are on a new line</span>
+	<span class="hljs-comment">// LY is updated even if we are in V-blank</span>
+	<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.scanline_cycles &gt; HBLANK_PERIOD &#123;
+		<span class="hljs-keyword">self</span>.LY.add(<span class="hljs-number">1</span>);
+		<span class="hljs-keyword">self</span>.scanline_cycles = <span class="hljs-number">0</span>;
+		<span class="hljs-keyword">self</span>.line_compare(interrupt);
+	&#125;
+&#125;</code></pre>
+
+<p>The internal framebuffer is a vector of bytes sized to the dimensions of our screen:</p>
+<pre><code class="hljs rust">frame_buffer: <span class="hljs-built_in">vec!</span>[<span class="hljs-number">0</span>; FRAME_WIDTH * FRAME_HEIGHT],</code></pre>
+
+<p>At the end of each scanline, we update the framebuffer with the contents of VRAM.
+This is done in the <code>update_scanline</code> function:</p>
+<pre><code class="hljs rust"><span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">update_scanline</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) &#123;
+	<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.LCDC.is_set(Bit::Bit0) &#123;
+		<span class="hljs-keyword">self</span>.draw_background();
+	&#125;
+	<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.LCDC.is_set(Bit::Bit5) &#123;
+		<span class="hljs-keyword">self</span>.draw_window();
+	&#125;
+	<span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.LCDC.is_set(Bit::Bit1) &#123;
+		<span class="hljs-keyword">self</span>.draw_sprites();
+	&#125;
+&#125;</code></pre>
+
+<p>The Gameboy has 3 distinct video layers that are all made up of 8x8 pixel tiles.</p>
+<ul>
+<li>Background</li>
+<li>Window</li>
+<li>Sprites</li>
+</ul>
+<p>The contents of each one are defined in their own special place in VRAM.
+The background layer is just that. A background of graphics to be drawn to the screen.
+The window layer is a static layer drawn above the background.
+The window typically is a blank space that keeps track of player lives/scores, etc.
+Sprites are the small characters that move on screen, and are typically drawn on top of the background layer.</p>
+<p>Each one is rendered slightly differently and the intricacies are beyond what I want to write about in this blog.
+A full overview of my GPU implementation can be found 
+<a href="https://github.com/mattbruv/Gameboy-Crust/blob/master/src/core/gpu.rs" target="_blank" rel="noopener">here</a>.</p>
+<h2 id="Joypad-Input"><a href="#Joypad-Input" class="headerlink" title="Joypad Input"></a>Joypad Input</h2><p>There are 4 directional and 4 general buttons on the Gameboy.
+The game can read/write to a special address in memory
+to determine the state of the buttons.
+In order to emulate this, all that is needed is a struct
+that wraps our host keyboard keypresses to the 8-bit
+memory register that the game expects to read from.</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Joypad</span></span> &#123;
+    button_state: <span class="hljs-built_in">u8</span>,
+    directional_state: <span class="hljs-built_in">u8</span>,
+    register: MemoryRegister,
+&#125;</code></pre>
+
+<p>When we press a button on our keyboard, we want to call a funciton
+that updates the internal state of our joypad.
+For convenience this can be called at the same interval that we refresh the screen 
+(60 times per second). </p>
+<pre><code class="hljs rust"><span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">read_input</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) &#123;
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_direction_pressed(PAD_UP, <span class="hljs-keyword">self</span>.window.is_key_down(Key::Up));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_direction_pressed(PAD_DOWN, <span class="hljs-keyword">self</span>.window.is_key_down(Key::Down));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_direction_pressed(PAD_LEFT, <span class="hljs-keyword">self</span>.window.is_key_down(Key::Left));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_direction_pressed(PAD_RIGHT, <span class="hljs-keyword">self</span>.window.is_key_down(Key::Right));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_button_pressed(BUTTON_A, <span class="hljs-keyword">self</span>.window.is_key_down(Key::A));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_button_pressed(BUTTON_B, <span class="hljs-keyword">self</span>.window.is_key_down(Key::S));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_button_pressed(BUTTON_START, <span class="hljs-keyword">self</span>.window.is_key_down(Key::Z));
+	<span class="hljs-keyword">self</span>.gameboy.joypad.set_button_pressed(BUTTON_SELECT, <span class="hljs-keyword">self</span>.window.is_key_down(Key::X));
+&#125;</code></pre>
+
+<p>And the <code>set_button_pressed</code> example method looks like this (<code>set_direction_pressed</code> is similar):</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">set_button_pressed</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, interrupt: &amp;<span class="hljs-keyword">mut</span> InterruptHandler, input: <span class="hljs-built_in">u8</span>, is_pressed: <span class="hljs-built_in">bool</span>) &#123;
+	<span class="hljs-keyword">match</span> is_pressed &#123;
+	    <span class="hljs-literal">true</span>  =&gt; &#123;
+		<span class="hljs-keyword">self</span>.button_state = <span class="hljs-keyword">self</span>.button_state | input;
+		interrupt.request_interrupt(InterruptFlag::Joypad);
+	    &#125;,
+	    <span class="hljs-literal">false</span> =&gt; &#123; <span class="hljs-keyword">self</span>.button_state = <span class="hljs-keyword">self</span>.button_state &amp; !input; &#125;,
+	&#125;
+&#125;</code></pre>
+
+<p>Then, whenever the special joypad register is read from, it will accurately return
+the state of the buttons pressed on your host keyboard,
+depending on whether the game requests directional or regular buttons:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">read</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">u8</span> &#123;
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> result = <span class="hljs-keyword">self</span>.register.get() &amp; <span class="hljs-number">0x30</span>;
+        <span class="hljs-keyword">let</span> pad = <span class="hljs-keyword">match</span> <span class="hljs-keyword">self</span>.read_next &#123;
+            ReadInput::Directional =&gt; !<span class="hljs-keyword">self</span>.directional_state,
+            ReadInput::Buttons =&gt; !<span class="hljs-keyword">self</span>.button_state,
+        &#125;;
+        result | (pad &amp; <span class="hljs-number">0x0F</span>)
+&#125;</code></pre>
+
+<h2 id="Bringing-it-all-together"><a href="#Bringing-it-all-together" class="headerlink" title="Bringing it all together"></a>Bringing it all together</h2><p>The last thing that is needed is a class that ties it all together.
+The emulator class has our Gameboy object and a window object.
+We load the ROM file and pass it to our gameboy, and initialize the window.</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(rom: Rom) -&gt; Emulator &#123;
+	<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> title = <span class="hljs-string">"Gameboy Crust - "</span>.to_owned();
+	title.push_str(&amp;rom.name());
+	Emulator &#123;
+		gameboy: GameBoy::new(rom),
+		window: Window::new(title.as_str(), <span class="hljs-number">160</span>, <span class="hljs-number">144</span>, WindowOptions &#123;
+			borderless: <span class="hljs-literal">false</span>,
+			title: <span class="hljs-literal">true</span>,
+			resize: <span class="hljs-literal">false</span>,
+			scale: Scale::X4,
+		&#125;).unwrap(),
+	&#125;
+&#125;</code></pre>
+
+<p>Now we implement a <code>run</code> function that will be called from <code>main</code> and will run forever.
+This is the high level function that emulates the Gameboy.
+It matches the 4.19Mhz speed of the CPU, and updates the video and reads joypad input at 60Hz:</p>
+<pre><code class="hljs rust"><span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">run</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) &#123;
+	<span class="hljs-keyword">while</span> <span class="hljs-keyword">self</span>.window.is_open() &amp;&amp; !<span class="hljs-keyword">self</span>.window.is_key_down(Key::Escape) &#123;
+		<span class="hljs-keyword">let</span> start_time = Instant::now();
+		<span class="hljs-keyword">let</span> frame_time = Duration::new(<span class="hljs-number">0</span>, <span class="hljs-number">16600000</span>); <span class="hljs-comment">// 16.6 ms as nanoseconds</span>
+
+		<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> video_sink = VideoSink::new();
+		<span class="hljs-keyword">let</span> cycles_per_frame = clock_speed / FRAME_RATE;
+		<span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> emulated_cycles = <span class="hljs-number">0</span>;
+
+		<span class="hljs-keyword">while</span> emulated_cycles &lt;= cycles_per_frame &#123;
+			emulated_cycles += <span class="hljs-keyword">self</span>.gameboy.step(&amp;<span class="hljs-keyword">mut</span> video_sink) <span class="hljs-keyword">as</span> <span class="hljs-built_in">i32</span>;
+		&#125;
+
+		<span class="hljs-keyword">if</span> <span class="hljs-keyword">let</span> <span class="hljs-literal">Some</span>(frame) = video_sink.consume() &#123;
+			<span class="hljs-keyword">self</span>.window.update_with_buffer(frame.as_slice()).unwrap();
+			<span class="hljs-keyword">self</span>.read_input();
+		&#125;
+
+		<span class="hljs-comment">// We have done our calculations, wait the remaning time</span>
+		<span class="hljs-keyword">let</span> elapsed_time = start_time.elapsed();
+		<span class="hljs-keyword">if</span> !(elapsed_time &gt; frame_time) &#123;
+			<span class="hljs-keyword">let</span> remaining_time = frame_time - elapsed_time;
+			thread::sleep(remaining_time);
+		&#125;
+	&#125;
+&#125;</code></pre>
+
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Programming emulators is a very challenging, technical, long, and difficult task.
+This project took me quite some time, and I had good documentation!
+I didn’t even have to go through the more difficult process of reverse engineering the system.
+This project has given me a great deal of respect for the people who are reverse engineering
+and writing emulators for modern consoles.</p>
+<p>Overall, it was a great learning experience.
+stepping through and debugging an emulator really forces you to learn about the system
+and it is very interesting to understand how these old game consoles work.
+I also learned quite a bit about how some of my favorite GB games were programmed.</p>
+<!--
+I enjoy emulation programming quite a bit, and 
+I would like to tackle the Gameboy Advance next.
+-->
+
+<h2 id="Documentation"><a href="#Documentation" class="headerlink" title="Documentation"></a>Documentation</h2><ul>
+<li>BGB’s <a href="http://bgb.bircd.org/pandocs.htm" target="_blank" rel="noopener">Pan Docs</a> is hands down some of the best documentation out there.</li>
+<li><a href="http://www.chrisantonellis.com/files/gameboy/gb-programming-manual.pdf" target="_blank" rel="noopener">GB Programming Manual</a> (a document by Nintendo for game developers)</li>
+<li>The <a href="https://reddit.com/r/emudev" target="_blank" rel="noopener">emudev</a> subreddit was a tremendously helpful resource and great community.</li>
+</ul>
+
+</article>
+        </div>
+    </body>
+</html>
