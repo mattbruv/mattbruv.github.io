@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+    <head><meta name="generator" content="Hexo 3.9.0">
+        <title>What I learned writing a LISP Interpreter</title>
+<link rel="stylesheet" type="text/css" href="/css/normalize.css">
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body>
+        <div id="container">
+            <header>
+    <h2><a href="/./">Matt's Blog</a></h2>
+</header>
+            <article>
+    <div id="article-header">
+        <h1>What I learned writing a LISP Interpreter</h1>
+        <h2></h2>
+        <div class="published">
+            <span title="Published on 12/27/2021 7:40 PM">
+                December 27th, 2021
+                - 
+                13 min read
+            </span>
+        </div>
+        
+            <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Why-LISP"><span class="toc-text">Why LISP?</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Writing-an-Interpreter"><span class="toc-text">Writing an Interpreter</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#Tokenizing"><span class="toc-text">Tokenizing</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Parsing"><span class="toc-text">Parsing</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Evaluation"><span class="toc-text">Evaluation</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Using-My-Language"><span class="toc-text">Using My Language</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Takeaways"><span class="toc-text">Takeaways</span></a></li></ol>
+        
+    </div>
+    <h2 id="Why-LISP"><a href="#Why-LISP" class="headerlink" title="Why LISP?"></a>Why LISP?</h2><p>After being reminded of <a href="https://adventofcode.com" target="_blank" rel="noopener">advent of code</a> at the beginning of this month,
+I decided to start participating in it.
+I knew of this site before, but in the past I learned of it <em>after</em> the event was already over.
+One thing I love about these types of programming challenges is seeing
+the solutions that other people come up with and the approach they take to solving the problems.</p>
+<p>Python is my go-to language for solving these types of problems.
+No other language that I know of does a better job at getting out of my way
+and letting me focus 100% on the problem at hand.
+When thinking about the programming languages that I prefer, I naturally ask myself a few questions:
+What exactly makes a programming language more fun to use than another?
+What makes you appreciate one programming language more than another?</p>
+<p>I love reading about programming languages.
+One of my favorite (historic) blogs to read is that of <a href="https://en.wikipedia.org/wiki/Andy_Gavin" target="_blank" rel="noopener">Andy Gavin</a>,
+who was one of the founders and lead programmer at Naughty Dog Games.
+He is a man who was also fascinated by the power of programming languages,
+<a href="https://all-things-andy-gavin.com/2011/03/12/making-crash-bandicoot-gool-part-9/" target="_blank" rel="noopener">so much so</a> that he even designed a compiler for his own LISP-like language called <a href="https://en.wikipedia.org/wiki/Game_Oriented_Assembly_Lisp" target="_blank" rel="noopener">GOAL</a>
+and then proceeded to write multiple best-selling PS2 games using it.
+Seeing as Advent of Code puzzles provide a good opportunity to learn a new language,
+I decided that I wanted to try and solve a few with LISP.
+This was also inspired by projects like <a href="https://github.com/water111/jak-project" target="_blank" rel="noopener">Open GOAL</a> which
+are reverse engineering Gavin’s custom LISP dialect.
+It is all just fascinating to me.</p>
+<p>Writing a LISP interpreter took me down a fun rabbit hole of computer science and programming language design and implementation that I would like to share a little bit about with you.</p>
+<h2 id="Writing-an-Interpreter"><a href="#Writing-an-Interpreter" class="headerlink" title="Writing an Interpreter"></a>Writing an Interpreter</h2><p>Firstly, I would like to recommend Robert Nystrom’s “<a href="https://craftinginterpreters.com/" target="_blank" rel="noopener">Crafting Interpreters</a>“,
+which is a free (and amazingly high quality) book about implementing an interpreter for a programming language.
+I referenced this book quite a bit.</p>
+<p>My LISP journey was broken down into 3 main parts:</p>
+<h3 id="Tokenizing"><a href="#Tokenizing" class="headerlink" title="Tokenizing"></a>Tokenizing</h3><p>The first part of writing a language is tokenizing.
+This is breaking down the source text of a file into 
+individual bite-sized pieces that correspond to something meaningful in the language.
+It’s up to you to decide the grouping of words and text corresponds to meaning in your language.</p>
+<p>For example, the source text:</p>
+<pre><code class="hljs lisp">(<span class="hljs-name">define</span> square (<span class="hljs-name">lambda</span> (<span class="hljs-name">n</span>)
+    (<span class="hljs-name">*</span> n n)))</code></pre>
+
+<p>Would become a list of tokens, with each having it’s own type assigned to it:</p>
+<pre><code class="hljs undefined">Found 15 tokens in total.
+&apos;(&apos; &apos;define&apos; &apos;square&apos; &apos;(&apos; &apos;lambda&apos; &apos;(&apos; &apos;n&apos; &apos;)&apos; &apos;(&apos; &apos;*&apos; &apos;n&apos; &apos;n&apos; &apos;)&apos; &apos;)&apos; &apos;)&apos;</code></pre>
+
+<p>Things like whitespace and line breaks are effectively ignored, as they don’t have
+any meaning in the language.
+Reading in the tokens was as simple as looping through a list of regular expressions
+and detecting the first one that matches the beginning part of the source file:</p>
+<pre><code class="hljs cpp"><span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">tokenRegex</span> <span class="hljs-title">tokenRegexes</span>[] = &#123;</span>
+    &#123; TokenType::WHITESPACE, <span class="hljs-string">"[\\s,]+"</span> &#125;, 
+    &#123; TokenType::COMMENT, <span class="hljs-string">";.+"</span> &#125;, 
+    &#123; TokenType::PAREN_LEFT, <span class="hljs-string">"\\("</span> &#125;, 
+    &#123; TokenType::PAREN_RIGHT, <span class="hljs-string">"\\)"</span> &#125;,
+    &#123; TokenType::QUOTE, <span class="hljs-string">"\'"</span> &#125;, 
+    &#123; TokenType::BOOLEAN, <span class="hljs-string">"false"</span> &#125;,
+    &#123; TokenType::BOOLEAN, <span class="hljs-string">"true"</span> &#125;,
+    &#123; TokenType::SYMBOL_NUMBER, <span class="hljs-string">"[^\\s\\[\\]&#123;&#125;('\"`,;)]+"</span> &#125;,
+    &#123; TokenType::STRING, <span class="hljs-string">"\\\".*\\\""</span> &#125;
+&#125;;</code></pre>
+
+<p>When a pattern is matched, a <code>Token</code> is created, given a type, and the matched part of the source
+string is set to the content of that token.
+When this is done, you have an entire list of all tokens in the source program,
+which leads to:</p>
+<h3 id="Parsing"><a href="#Parsing" class="headerlink" title="Parsing"></a>Parsing</h3><p>Parsing is the step where the data in individual tokens are used to build
+what I called <code>Expr</code>s, or Expressions.
+In LISP and functional languages, everything is an expression.
+An expression object could take one of a few forms.
+In my implementation, an expression can be a <code>Number</code>, <code>Symbol</code>, <code>Boolean</code>, or <code>List</code>.</p>
+<pre><code class="hljs cpp"><span class="hljs-keyword">typedef</span> <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Expr</span>
+&#123;</span>
+    ExprType type;
+
+    <span class="hljs-keyword">union</span> as
+    &#123;
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ExprSymbol</span> <span class="hljs-title">symbol</span>;</span>
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ExprNumber</span> <span class="hljs-title">number</span>;</span>
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ExprList</span> <span class="hljs-title">list</span>;</span>
+        <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">ExprBool</span> <span class="hljs-title">boolean</span>;</span>
+    &#125; as;
+&#125; Expr;</code></pre>
+
+<p>The job of the parser is to start at the beginning of the token list,
+and use those tokens to construct individual expressions.
+For example, if we see a number token, we simply set the type of expression
+to <code>Number</code>, and then convert the string value of the number into its integer
+equivalent.
+The same thing is done for symbols and booleans, but lists are a bit different.
+A list expression can be implemented as a dynamically sized array of expressions.
+Creating and populating a list expression is done by recursively parsing expressions
+and adding it to the list:</p>
+<pre><code class="hljs cpp">consume(TokenType::PAREN_LEFT, <span class="hljs-string">"Expected (, found "</span> + token.content);
+expr-&gt;type = ExprType::List;
+
+<span class="hljs-keyword">while</span> (check(TokenType::PAREN_RIGHT) == <span class="hljs-literal">false</span>)
+&#123;
+    <span class="hljs-keyword">auto</span> temp = <span class="hljs-keyword">this</span>-&gt;parse();
+    expr-&gt;as.<span class="hljs-built_in">list</span>.exprs-&gt;push_back(temp);
+&#125;
+
+consume(TokenType::PAREN_RIGHT, <span class="hljs-string">"Expected ), found "</span> + token.content);</code></pre>
+
+<p>When parsing is done, you’re left with a list of Expressions that form your program!
+All that’s left to do is evaluate them.</p>
+<h3 id="Evaluation"><a href="#Evaluation" class="headerlink" title="Evaluation"></a>Evaluation</h3><p>Evaluation is taking an expression and converting it to it’s most primitive evaluated form.
+Consider the expression <code>(+ 1 2)</code>, after calling <code>eval</code> on this, we would get a new expression <code>3</code>.
+Numbers and booleans evaluate to themselves.
+Symbols are simply variables, so their value is determined by doing a lookup of the symbol name
+and returning whatever expression it has assigned to it.</p>
+<p>Lists are the most complicated type to evaluate.
+in LISP, the first item in a list is always considered a name of a function to call,
+and the rest of the items in the list are considered its arguments.
+This is where evaluating gets interesting.
+Consider <code>(square 4)</code>. How would this be evaluated?</p>
+<pre><code class="hljs lisp">(<span class="hljs-name">define</span> square (<span class="hljs-name">lambda</span> (<span class="hljs-name">n</span>) (<span class="hljs-name">*</span> n n)))
+<span class="hljs-comment">; the symbol 'square' will now return a list: (lambda (n) (* n n)) when evaluated.</span>
+
+(<span class="hljs-name">square</span> <span class="hljs-number">4</span>)
+<span class="hljs-comment">; can be also understood as:</span>
+((<span class="hljs-name">lambda</span> (<span class="hljs-name">n</span>) (<span class="hljs-name">*</span> n n)) <span class="hljs-number">4</span>)</code></pre>
+
+<p>Now before each function call, you must create a new variable environment which maps
+the function arguments to the symbols given as the function parameters.</p>
+<pre><code class="hljs lisp">((<span class="hljs-name">lambda</span> (<span class="hljs-name">n</span>) (<span class="hljs-name">*</span> n n)) <span class="hljs-number">4</span>)
+<span class="hljs-comment">; becomes</span>
+((<span class="hljs-name">lambda</span> (<span class="hljs-name">n</span>) (<span class="hljs-name">*</span> <span class="hljs-number">4</span> <span class="hljs-number">4</span>))) <span class="hljs-comment">; since n = 4</span>
+<span class="hljs-comment">; or most simply</span>
+(<span class="hljs-name">*</span> <span class="hljs-number">4</span> <span class="hljs-number">4</span>)
+
+<span class="hljs-comment">; so</span>
+(<span class="hljs-name">square</span> <span class="hljs-number">4</span>)
+<span class="hljs-comment">; has become</span>
+(<span class="hljs-name">*</span> <span class="hljs-number">4</span> <span class="hljs-number">4</span>)
+<span class="hljs-comment">; or just</span>
+<span class="hljs-number">16</span></code></pre>
+
+<p>All functions are defined by the user, but there are some special functions which
+the language implementation must provide in order to make the language useful 
+to begin with.
+For my implementation, I wrote custom code for the following functions:</p>
+<p><code>+ - * / &gt; lambda define quote if car cdr cons empty?</code></p>
+<p>This gives the user of the language access to many helpful standard functions
+that they can use to build their programs.
+Now they can perform arithmetic on numbers, compare numbers, define functions,
+get the <code>first</code> and <code>rest</code> of a list, use an <code>if</code> statement, and tell if a list is empty.
+You might wonder why I only implemented <code>&gt;</code> and not <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;=</code>, <code>=</code>, etc.?
+The answer to this is quite fun: You can actually implement these functions in the LISP language itself,
+being bootstrapped by the single <code>&gt;</code> boolean operator:</p>
+<pre><code class="hljs lisp">(<span class="hljs-name">define</span> &lt; (<span class="hljs-name">lambda</span> (<span class="hljs-name">a</span> b) (<span class="hljs-name">&gt;</span> b a)))
+
+(<span class="hljs-name">define</span> = (<span class="hljs-name">lambda</span> (<span class="hljs-name">a</span> b) (<span class="hljs-name">if</span> (<span class="hljs-name">&gt;</span> a b) false 
+    (<span class="hljs-name">if</span> (<span class="hljs-name">&lt;</span> a b) false true))))
+
+(<span class="hljs-name">define</span> &gt;= (<span class="hljs-name">lambda</span> (<span class="hljs-name">a</span> b) (<span class="hljs-name">if</span> (<span class="hljs-name">&gt;</span> a b) true
+    (<span class="hljs-name">if</span> (<span class="hljs-name">=</span> a b) true false))))
+
+(<span class="hljs-name">define</span> &lt;= (<span class="hljs-name">lambda</span> (<span class="hljs-name">a</span> b) (<span class="hljs-name">&gt;=</span> b a)))</code></pre>
+
+<p>Using basic primitives and fleshing out a little standard library in the language you just created
+is one of the most magical feelings while creating a language!
+It’s like watching Frankenstein’s monster come to life.</p>
+<h2 id="Using-My-Language"><a href="#Using-My-Language" class="headerlink" title="Using My Language"></a>Using My Language</h2><p>Although this little LISP language is just a toy, I was curious as to how effective it was.
+Could I actually use this to solve a real problem?
+I looked at the Advent of Code problems that I had yet to solve, and chose <a href="https://adventofcode.com/2021/day/17" target="_blank" rel="noopener">Day 17</a>.
+This looked like the perfect problem to try and solve in my language.
+The puzzle input is just 4 numbers, so there’s no need for dealing with files, parsing strings, etc.
+The question itself appeared to be centered around numbers and math, not around string manipulation as some other puzzles are.</p>
+<p>After spending some time on the problem and slowly fleshing out my standard library with generic functions as I needed them,
+I was finally able to solve Part 1 in my own language!
+What was even more shocking was that it honestly <em>wasn’t that bad</em> to use.
+Implementing functions like <code>map</code> and <code>filter</code> is a breeze in LISP:</p>
+<pre><code class="hljs lisp">(<span class="hljs-name">define</span> filter (<span class="hljs-name">lambda</span> (<span class="hljs-name">fn</span> xs acc)
+    (<span class="hljs-name">if</span> (<span class="hljs-name">empty</span>? xs) acc
+        (<span class="hljs-name">if</span> (<span class="hljs-name">fn</span> (<span class="hljs-name">car</span> xs))
+            (<span class="hljs-name">filter</span> fn (<span class="hljs-name">cdr</span> xs) (<span class="hljs-name">cons</span> (<span class="hljs-name">car</span> xs) acc))
+            (<span class="hljs-name">filter</span> fn (<span class="hljs-name">cdr</span> xs) acc)))))</code></pre>
+
+<p>So after writing a few basic functions like <code>map</code>, <code>filter</code>, <code>range</code>, and <code>max</code>,
+solving the problem was actually quite enjoyable!
+It felt a lot like using python’s functional list features to solve problems.
+I didn’t feel like I was fighting the language very much.
+Considering how basic my implementation was at that point,
+not feeling too constrained by my primitive language and being able to easily write helper functions
+is a testament to the power of LISP.</p>
+<p>Here is the code I wrote that earned me my first star for Day 17:</p>
+<pre><code class="hljs lisp"><span class="hljs-comment">; target area: x=288..330, y=-96..-50</span>
+(<span class="hljs-name">define</span> xMin <span class="hljs-number">288</span>)
+(<span class="hljs-name">define</span> xMax <span class="hljs-number">330</span>)
+(<span class="hljs-name">define</span> yMin <span class="hljs-number">-96</span>)
+(<span class="hljs-name">define</span> yMax <span class="hljs-number">-50</span>)
+
+(<span class="hljs-name">define</span> inBounds (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span> y)
+    (<span class="hljs-name">and</span> (<span class="hljs-name">inX</span> x) (<span class="hljs-name">inY</span> y))))
+
+(<span class="hljs-name">define</span> inX (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>) 
+    (<span class="hljs-name">and</span> (<span class="hljs-name">&gt;=</span> x xMin) (<span class="hljs-name">and</span> (<span class="hljs-name">&lt;=</span> x xMax) true))))
+
+(<span class="hljs-name">define</span> inY (<span class="hljs-name">lambda</span> (<span class="hljs-name">y</span>) 
+    (<span class="hljs-name">and</span> (<span class="hljs-name">&gt;=</span> y yMin) (<span class="hljs-name">and</span> (<span class="hljs-name">&lt;=</span> y yMax) true))))
+
+(<span class="hljs-name">define</span> pastX (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>) (<span class="hljs-name">&gt;</span> x xMax)))
+(<span class="hljs-name">define</span> pastY (<span class="hljs-name">lambda</span> (<span class="hljs-name">y</span>) (<span class="hljs-name">&lt;</span> y yMin)))
+(<span class="hljs-name">define</span> pastBounds (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span> y) (<span class="hljs-name">or</span> (<span class="hljs-name">pastX</span> x) (<span class="hljs-name">pastY</span> y))))
+
+(<span class="hljs-name">define</span> step (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span> y xVel yVel peak steps)
+    <span class="hljs-comment">; if we have hit our magic area, return highest peak</span>
+    (<span class="hljs-name">if</span> (<span class="hljs-name">inBounds</span> x y) peak
+        <span class="hljs-comment">; if we are past the bounds, return FAIL</span>
+        (<span class="hljs-name">if</span> (<span class="hljs-name">pastBounds</span> x y) <span class="hljs-number">-1</span>
+            <span class="hljs-comment">; otherwise, do the next step</span>
+            (<span class="hljs-name">step</span>
+                (<span class="hljs-name">+</span> x xVel)
+                (<span class="hljs-name">+</span> y yVel)
+                (<span class="hljs-name">if</span> (<span class="hljs-name">&gt;</span> xVel <span class="hljs-number">0</span>) (<span class="hljs-name">-</span> xVel <span class="hljs-number">1</span>)
+                    (<span class="hljs-name">if</span> (<span class="hljs-name">&lt;</span> xVel <span class="hljs-number">0</span>) (<span class="hljs-name">+</span> xVel <span class="hljs-number">1</span>) <span class="hljs-number">0</span>))
+                (<span class="hljs-name">-</span> yVel <span class="hljs-number">1</span>)
+                (<span class="hljs-name">if</span> (<span class="hljs-name">&gt;</span> y peak) y peak)
+                (<span class="hljs-name">+</span> <span class="hljs-number">1</span> steps))))))
+
+(<span class="hljs-name">define</span> shoot (<span class="hljs-name">lambda</span> (<span class="hljs-name">xVel</span> yVel) (<span class="hljs-name">step</span> <span class="hljs-number">0</span> <span class="hljs-number">0</span> xVel yVel <span class="hljs-number">0</span> <span class="hljs-number">0</span>)))
+
+(<span class="hljs-name">define</span> xVelDist (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>) (<span class="hljs-name">if</span> (<span class="hljs-name">&lt;=</span> x <span class="hljs-number">1</span>) x
+    (<span class="hljs-name">+</span> x (<span class="hljs-name">xVelDist</span> (<span class="hljs-name">-</span> x <span class="hljs-number">1</span>))))))
+
+(<span class="hljs-name">define</span> range (<span class="hljs-name">lambda</span> (<span class="hljs-name">from</span> to acc) (<span class="hljs-name">if</span> (<span class="hljs-name">=</span> from (<span class="hljs-name">+</span> <span class="hljs-number">1</span> to)) acc
+    (<span class="hljs-name">range</span> (<span class="hljs-name">+</span> from <span class="hljs-number">1</span>) to (<span class="hljs-name">cons</span> (<span class="hljs-name">-</span> to from) acc)))))
+
+(<span class="hljs-name">define</span> testRange (<span class="hljs-name">range</span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> '()))
+(<span class="hljs-name">define</span> searchY (<span class="hljs-name">range</span> <span class="hljs-number">0</span> <span class="hljs-number">100</span> '()))
+
+(<span class="hljs-name">define</span> peaks (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>) (<span class="hljs-name">&gt;</span> x <span class="hljs-number">0</span>)))
+
+(<span class="hljs-name">define</span> searchX (<span class="hljs-name">filter</span> (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>) (<span class="hljs-name">inX</span> (<span class="hljs-name">xVelDist</span> x))) testRange))
+
+(<span class="hljs-name">define</span> maxAtX (<span class="hljs-name">lambda</span> (<span class="hljs-name">x</span>)
+    (<span class="hljs-name">max</span> (<span class="hljs-name">filter</span> peaks (<span class="hljs-name">map</span> (<span class="hljs-name">lambda</span> (<span class="hljs-name">y</span>) (<span class="hljs-name">shoot</span> x y)) searchY)) <span class="hljs-number">0</span>)))
+
+(<span class="hljs-name">max</span> (<span class="hljs-name">map</span> maxAtX searchX) <span class="hljs-number">0</span>)</code></pre>
+
+<p>What more can you ask for from a project like this?
+I implemented a programming language and then used it to solve a real problem.
+It was a really good feeling getting the right answer using a tool that you made yourself!</p>
+<h2 id="Takeaways"><a href="#Takeaways" class="headerlink" title="Takeaways"></a>Takeaways</h2><p>LISP is a language that is timeless.
+Getting my feet wet in writing an interpreter for LISP has taught me
+a lot about the fundamentals of creating a programming language.
+For its simplicity, writing LISP feels incredibly powerful.
+Although it is dated now, I could see myself loving LISP if I were a programmer
+back in the 80’s and 90’s.
+Most of the languages we take for granted today weren’t around back then,
+or were in their infancy and not very practical to use.
+Imagine having a language like LISP where you could warp it into whatever
+you wanted it to be!</p>
+<blockquote>
+<p>Python reached version 1.0 in January 1994. The major new features included in this release were the functional programming tools lambda, map, filter and reduce. Van Rossum stated that “Python acquired lambda, reduce(), filter() and map(), courtesy of a Lisp hacker who missed them and submitted working patches”.</p>
+</blockquote>
+<p><img src="https://imgs.xkcd.com/comics/lisp_cycles.png" alt></p>
+<p><a href="https://github.com/mattbruv/mplisp" target="_blank" rel="noopener">Source code for mplisp</a>.</p>
+
+</article>
+        </div>
+    </body>
+</html>
