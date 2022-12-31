@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
-    <head><meta name="generator" content="Hexo 3.9.0">
+    <head>
         <title>Fixing a bug in an 18 year old Shockwave game</title>
-<link rel="stylesheet" type="text/css" href="/css/normalize.css">
-<link rel="stylesheet" type="text/css" href="/css/style.css">
+<link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="/css/style.css"/>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-    </head>
+    <meta name="generator" content="Hexo 6.3.0"></head>
     <body>
         <div id="container">
             <header>
@@ -45,10 +45,10 @@ That summer they released a series of games called “Cartoon Cartoon Summer Res
 Gameplay of the first Episode of Cartoon Cartoon Summer Resort
 </div>
 
-<p>The game was a top-down 2D RPG/adventure game that had 4 episodes.
+<p>The game was a top-down 2D RPG&#x2F;adventure game that had 4 episodes.
 You played as a cartoon character who is on vacation at a resort with other cartoon characters.
 In each episode there is a problem to solve at the resort.
-You must help solve it by interacting with the characters and finding/trading items.</p>
+You must help solve it by interacting with the characters and finding&#x2F;trading items.</p>
 <h2 id="Fast-forward-18-years"><a href="#Fast-forward-18-years" class="headerlink" title="Fast forward 18 years"></a>Fast forward 18 years</h2><p>I remembered this game a while ago during a nostalga trip and I knew that I had to play it again.
 The game is nearly 2 decades old so it was hard to find a working link.</p>
 <p>Also, no modern browser would run the ancient and vulnerability prone Shockwave player… except for Internet Explorer. 
@@ -63,7 +63,7 @@ If you travel north and walk along the right edge of the island,
 it will randomly trigger the same text that was meant for the boat dock.</p>
 <div class="image-row">
 
-<p><img src="./bug.gif" alt></p>
+<p><img src="/ccsr-bugfix/bug.gif"></p>
 </div>
 
 <p>Now at this point, any sane person with a healthy respsect for their time and energy
@@ -78,7 +78,7 @@ For me, fixing this bug was an opportunity for learning and discovery.
 Interestingly, this is exactly what <em>playing</em> the game offered to me as a kid.
 It’s poetic how something can unintentionally offer entirely new challenges depending on how you look at it.</p>
 <h2 id="Deconstructing-the-Game"><a href="#Deconstructing-the-Game" class="headerlink" title="Deconstructing the Game"></a>Deconstructing the Game</h2><p>In order to fix the bug, I needed to figure out how the game worked under the hood.
-After doing some research, I learned that the game was a Shockwave game made with <a href="https://en.wikipedia.org/wiki/Adobe_Director" target="_blank" rel="noopener">Director</a>.
+After doing some research, I learned that the game was a Shockwave game made with <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Adobe_Director">Director</a>.
 When using Director, projects are saved as a <code>.dir</code> (Director) file.
 This file is similar to a PSD file for Photoshop.
 In the same way that a PSD file would hold non-destructive layer and text information,
@@ -102,35 +102,18 @@ The prospects of figuring out how this game worked were looking pretty grim.</p>
 <h2 id="Decompression"><a href="#Decompression" class="headerlink" title="Decompression"></a>Decompression</h2><p>After feeling defeated by the fact that I wasn’t likely going to be able to solve the bug, I decided
 to see if there was any possible way to extract assets out of the game.
 I figured that there might be a chance I could find a compressed data section or something similar.
-After looking around, I found a few programs called <a href="https://aluigi.altervista.org/mytoolz.htm" target="_blank" rel="noopener">offzip and packzip</a>.
+After looking around, I found a few programs called <a target="_blank" rel="noopener" href="https://aluigi.altervista.org/mytoolz.htm">offzip and packzip</a>.
 These tools are able to search for zlib data in arbitrary binary files, show you the offsets,
 and extract them to separate files if they exist.</p>
 <p>I ran offzip on the DCR file and to my amazement it actually found archives!
 249 to be exact. </p>
-<pre><code class="hljs undefined">$ ./offzip.exe -a 1.dcr
-
-- open input file:    1.dcr
-- zip data to check:  32 bytes
-- zip windowBits:     15
-- seek offset:        0x00000000  (0)
-+------------+-----+----------------------------+----------------------+
-| hex_offset | ... | zip -&gt; unzip size / offset | spaces before | info |
-+------------+-----+----------------------------+----------------------+
-  0x00000026 . 164 -&gt; 214 / 0x000000ca _ 38 8:7:26:0:1:7b6349f6
-  0x000000d3 .. 3932 -&gt; 9169 / 0x0000102f _ 9 8:7:26:0:1:c1079d84
-  ...
-  0x00080490 . 265 -&gt; 472 / 0x00080599 _ 0 8:7:26:0:1:04d6b43f
-  0x00080599 . 209 -&gt; 366 / 0x0008066a _ 0 8:7:26:0:1:7da3ba08
-
-
-- 249 valid compressed streams found
-- 0x0004040d -&gt; 0x001565c8 bytes covering the 50% of the file</code></pre>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><code class="hljs plaintext">$ ./offzip.exe -a 1.dcr<br><br>- open input file:    1.dcr<br>- zip data to check:  32 bytes<br>- zip windowBits:     15<br>- seek offset:        0x00000000  (0)<br>+------------+-----+----------------------------+----------------------+<br>| hex_offset | ... | zip -&gt; unzip size / offset | spaces before | info |<br>+------------+-----+----------------------------+----------------------+<br>  0x00000026 . 164 -&gt; 214 / 0x000000ca _ 38 8:7:26:0:1:7b6349f6<br>  0x000000d3 .. 3932 -&gt; 9169 / 0x0000102f _ 9 8:7:26:0:1:c1079d84<br>  ...<br>  0x00080490 . 265 -&gt; 472 / 0x00080599 _ 0 8:7:26:0:1:04d6b43f<br>  0x00080599 . 209 -&gt; 366 / 0x0008066a _ 0 8:7:26:0:1:7da3ba08<br><br><br>- 249 valid compressed streams found<br>- 0x0004040d -&gt; 0x001565c8 bytes covering the 50% of the file<br></code></pre></td></tr></table></figure>
 
 <p>I extracted all of these files into a folder, and started looking at the results.
 There were 206 <code>.dat</code> files, 38 <code>.fff</code> files, 4 <code>.atn</code> files, and a single <code>.ini</code> file.</p>
 <div class="image-row">
 
-<p><img src="./decomp.png" alt></p>
+<p><img src="/ccsr-bugfix/decomp.png"></p>
 </div>
 
 <h2 id="Discoveries"><a href="#Discoveries" class="headerlink" title="Discoveries"></a>Discoveries</h2><p>I started with the INI file, but it had no value.
@@ -143,7 +126,7 @@ Most of it was unintelligible data.
 However, eventually I found some words mixed in that appeared to be Lingo identifiers</p>
 <div class="image-row">
 
-<p><img src="./lingohex.png" alt></p>
+<p><img src="/ccsr-bugfix/lingohex.png"></p>
 </div>
 
 <p>Sifting through the large DAT files provided me with a few clues,
@@ -153,7 +136,7 @@ They also had an internal map editing tool that was named
 <code>Map-O-Matic v1</code>. I wish I could see what that looked like
 and how it was made.</p>
 <p>I also discovered the name of the company who made the game:
-<a href="https://www.linkedin.com/company/funny-garbage/" target="_blank" rel="noopener">Funny Garbage</a>.
+<a target="_blank" rel="noopener" href="https://www.linkedin.com/company/funny-garbage/">Funny Garbage</a>.
 The lead developer’s name was also in the file, who’s name I will omit.
 It felt good to solve the mystery of who made the game that I was furiously
 trying to fix nearly 20 years later and to put a face to the person
@@ -165,38 +148,12 @@ To my great surprise, all of the data in these files
 was legible AND it looked like map data:</p>
 <div class="image-row">
 
-<p><img src="./maphex.png" alt></p>
+<p><img src="/ccsr-bugfix/maphex.png"></p>
 </div>
 
 <p>I manually extracted some of this data and prettied it up in a text editor.
 What I was left with was something that looks very similar to a JSON array:</p>
-<pre><code class="hljs undefined">[
-    #member: &quot;block.104&quot;,
-    #type: #FLOR,
-    #location: [16, 9],
-    #width: 64,
-    #WSHIFT: 0,
-    #height: 32,
-    #HSHIFT: 0,
-    #data: [
-        #item: [
-            #name: &quot;&quot;,
-            #type: #WALL,
-            #visi: [
-                #visiObj: &quot;&quot;,
-                #visiAct: &quot;&quot;,
-                #inviObj: &quot;&quot;,
-                #inviAct: &quot;&quot;
-            ],
-            #COND: [[#hasObj: &quot;&quot;, #hasAct: &quot;&quot;, #giveObj: &quot;sunscreen&quot;, #giveAct: &quot;gotscreen&quot;], #none, #none, #none]
-        ],
-        #move: [#U: 0, #d: 0, #L: 0, #R: 0, #COND: 1, #TIMEA: 0, #TIMEB: 0],
-        #message: [
-            [#text: &quot;You bought the sun screen.&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;&quot;],
-            [#text: &quot;No more sunscreen today!&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;gotscreen&quot;]
-        ]
-    ]
-]</code></pre>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><code class="hljs plaintext">[<br>    #member: &quot;block.104&quot;,<br>    #type: #FLOR,<br>    #location: [16, 9],<br>    #width: 64,<br>    #WSHIFT: 0,<br>    #height: 32,<br>    #HSHIFT: 0,<br>    #data: [<br>        #item: [<br>            #name: &quot;&quot;,<br>            #type: #WALL,<br>            #visi: [<br>                #visiObj: &quot;&quot;,<br>                #visiAct: &quot;&quot;,<br>                #inviObj: &quot;&quot;,<br>                #inviAct: &quot;&quot;<br>            ],<br>            #COND: [[#hasObj: &quot;&quot;, #hasAct: &quot;&quot;, #giveObj: &quot;sunscreen&quot;, #giveAct: &quot;gotscreen&quot;], #none, #none, #none]<br>        ],<br>        #move: [#U: 0, #d: 0, #L: 0, #R: 0, #COND: 1, #TIMEA: 0, #TIMEB: 0],<br>        #message: [<br>            [#text: &quot;You bought the sun screen.&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;&quot;],<br>            [#text: &quot;No more sunscreen today!&quot;, #plrObj: &quot;&quot;, #plrAct: &quot;gotscreen&quot;]<br>        ]<br>    ]<br>]<br></code></pre></td></tr></table></figure>
 
 <p>This was critical, because I was able to deduce a lot about how the game worked from this.</p>
 <ol>
@@ -206,12 +163,12 @@ What I was left with was something that looks very similar to a JSON array:</p>
 </ol>
 <p>Knowing that the game dialoge is saved in these files,
 I wrote a quick line to extract only the dialogue into a file:
-<code>grep -a -o &#39;#text: &quot;[^&quot;]*&#39; Uncompressed/*.fff | awk &#39;{print $0,&quot;\r&quot;}&#39; &gt; Dialogue.txt</code></p>
+<code>grep -a -o &#39;#text: &quot;[^&quot;]*&#39; Uncompressed/*.fff | awk &#39;&#123;print $0,&quot;\r&quot;&#125;&#39; &gt; Dialogue.txt</code></p>
 <p>Using this file, I could easily search for the offending text,
 and also see which file it was in:</p>
 <div class="image-row">
 
-<p><img src="./dialogue.png" alt></p>
+<p><img src="/ccsr-bugfix/dialogue.png"></p>
 </div>
 
 <p>The offending text is either in <code>0004eda0.fff</code> or <code>0004f396.fff</code>.
@@ -224,7 +181,7 @@ I can now change its properties and save the file.
 Afterwards, I can recompress and patch it back into the original game DCR by using <code>packzip</code>.</p>
 <div class="image-row">
 
-<p><img src="./boathex1.png" alt></p>
+<p><img src="/ccsr-bugfix/boathex1.png"></p>
 </div>
 
 <p><code>$ ./packzip -o 0x0004EDA0 Uncompressed/0004eda0.fff test.dcr</code></p>
@@ -232,7 +189,7 @@ Afterwards, I can recompress and patch it back into the original game DCR by usi
 we can clearly see the outline of the messed up tile:</p>
 <div class="image-row">
 
-<p><img src="./replace.png" alt></p>
+<p><img src="/ccsr-bugfix/replace.png"></p>
 </div>
 <div class="subtitle">
 Changing the tile ID shows the bounds of the bugged area
@@ -242,14 +199,14 @@ Changing the tile ID shows the bounds of the bugged area
 All I had to do was change the identifier for the <code>#message</code> to <code>#fessage</code> for that bugged tile:</p>
 <div class="image-row">
 
-<p><img src="./bugfix.gif" alt></p>
+<p><img src="/ccsr-bugfix/bugfix.gif"></p>
 </div>
 
 <p>Now, when we patch this in and walk back to that area,
 THERE ARE NO MORE MESSAGES!!!</p>
 <div class="image-row">
 
-<p><img src="./fixed.gif" alt></p>
+<p><img src="/ccsr-bugfix/fixed.gif"></p>
 </div>
 <div class="subtitle">
 Fixing a bug in the game by literally editing 1 byte
@@ -262,11 +219,7 @@ By changing <code>#message</code> to <code>#fessage</code>, there is no longer a
 when the code looks for it.
 It treats it as an empty (or undefined?) object and happily displays nothing.</p>
 <p>Consider this JS example:</p>
-<pre><code class="hljs js"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">foo</span>(<span class="hljs-params">bar</span>) </span>&#123;
-    <span class="hljs-keyword">if</span> (bar[<span class="hljs-string">"message"</span>] !== <span class="hljs-literal">undefined</span>) &#123;
-        <span class="hljs-comment">// display the message</span>
-    &#125;
-&#125;</code></pre>
+<figure class="highlight js"><table><tr><td class="code"><pre><code class="hljs js"><span class="hljs-keyword">function</span> <span class="hljs-title function_">foo</span>(<span class="hljs-params">bar</span>) &#123;<br>    <span class="hljs-keyword">if</span> (bar[<span class="hljs-string">&quot;message&quot;</span>] !== <span class="hljs-literal">undefined</span>) &#123;<br>        <span class="hljs-comment">// display the message</span><br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
 
 <p>Suppose we can’t change the function <code>foo()</code>, but we want to change the outcome.
 We do have access to the data that is passed to it.

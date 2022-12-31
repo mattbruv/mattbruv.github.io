@@ -1,0 +1,204 @@
+$container-width: 900px;
+$phone-width: 700px;
+$font-color-main: #333;
+$font-color-light: #888;
+$link-color-main: #555;
+$font-size-base: 19;
+$line-height-para: round($font-size-base * 1.7);
+
+@use "font.scss";
+@use "code.scss";
+@use "index.scss";
+@use "header.scss";
+
+@mixin phone {
+    @media (max-width: #{$phone-width}) {
+       @content; 
+    }
+}
+
+figure {
+    margin: 0;
+}
+
+table {
+    width: 100%;
+}
+
+div, article, header, h1, h2, h3, h4, h5, h6, p {
+    margin: 0;
+    padding: 0;
+}
+
+@font-face {
+    font-family: 'mp-serif';
+    src: url('../fonts/charter.otf');
+}
+
+@font-face {
+    font-family: 'mp-sans';
+    src: url('../fonts/Lato-Regular.ttf');
+}
+
+html {
+    font-family: 'mp-serif',Georgia,Cambria,"Times New Roman",Times,serif !important;
+    font-size: $font-size-base * 1px;
+    color: $font-color-main;
+    @include phone {
+        font-size: $font-size-base - 2px;
+    }
+}
+
+a {
+    color: $font-color-main;
+    color: $link-color-main;
+    &:hover {
+        text-decoration: underline;
+        color: $font-color-light;
+    }
+}
+
+h1, h2, h3, h4, h5, h6 {
+    //font-family: 'mp-sans', "Lucida Grande","Lucida Sans Unicode","Lucida Sans",Geneva,Arial,sans-serif !important; 
+    font-family: 'PT Sans', sans-serif;
+    //font-weight: normal;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+
+    article {
+        text-align: center;
+    }
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.17rem; }
+h4 { font-size: 1.12rem; }
+h5 { font-size: .83rem; }
+h6 { font-size: .75rem; }
+
+#container {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    max-width: $container-width;
+    margin: auto;
+    //background-color: #eee;
+    @include phone {
+        padding: 0px;
+    }
+}
+
+* {
+    min-width: 0;
+}
+
+.subtitle {
+    text-align: center;
+    margin: 20px 0;
+    color: $font-color-light;
+    font-style: italic;
+    font-size: smaller;
+}
+
+.hljs {
+    border-radius: 5px;
+    font-size: smaller;
+    max-height: 500px;
+    border: 1px solid #ddd;
+}
+
+article {
+    //background-color: #ddd;
+    padding: 20px;
+    @include phone {
+        //padding: 15px;
+    }
+
+    p:first-of-type::first-letter {
+        //font-size: 200%;
+    }
+}
+
+#article-header {
+    padding: 10px 0;
+    margin-bottom: 20px;
+
+    h1 {
+        text-transform: capitalize;
+    }
+
+    h2 {
+        font-weight: normal;
+    }
+
+    .published {
+        color: #888;
+        font-family: 'PT Sans', sans-serif;
+        letter-spacing: 1px;
+        font-size: small;
+        text-transform: uppercase;
+        /*
+        border-top: 1px solid #e3e3e5;
+        border-bottom: 1px solid #e3e3e5;
+        */
+        padding: 1em 0;
+        /*
+        margin-bottom: 10px;
+        */
+    }
+
+    .toc {
+        //font-size: smaller;
+        @include phone {
+            display: none;
+        }
+    }
+}
+
+p {
+    display: block;
+    line-height: $line-height-para * 1px;
+    margin-bottom: 28px;
+    @include phone {
+        line-height: 1.5;
+    };
+}
+
+code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    background-color: rgba(27,31,35,0.05);
+    border-radius: 3px;
+}
+
+.image-row {
+    * {
+        max-width: 100%;
+    }
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+blockquote {
+    background: #f9f9f9;
+    border-left: 10px solid #ccc;
+    margin: 1.5em 10px;
+    padding: 0.5em 10px;
+    quotes: "\201C""\201D""\2018""\2019";
+  }
+  blockquote:before {
+    color: #ccc;
+    content: open-quote;
+    font-size: 4em;
+    line-height: 0.1em;
+    margin-right: 0.25em;
+    vertical-align: -0.4em;
+  }
+  blockquote p {
+    display: inline;
+  }
+
+  li {
+      line-height: 1.5em;
+  }

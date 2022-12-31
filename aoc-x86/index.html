@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Solving Advent of Code in 1 microsecond using handwritten x86 assembly</title>
+<link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="/css/style.css"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Hexo 6.3.0"></head>
+    <body>
+        <div id="container">
+            <header>
+    <h2><a href="/./">Matt's Blog</a></h2>
+</header>
+            <article>
+    <div id="article-header">
+        <h1>Solving Advent of Code in 1 microsecond using handwritten x86 assembly</h1>
+        <h2>It's a luxury to be able to write x += n</h2>
+        <div class="published">
+            <span title="Published on 12/31/2022 9:20 AM">
+                December 31st, 2022
+                - 
+                15 min read
+            </span>
+        </div>
+        
+    </div>
+    <h1 id="Advent-of-Code"><a href="#Advent-of-Code" class="headerlink" title="Advent of Code"></a>Advent of Code</h1><p><a target="_blank" rel="noopener" href="https://adventofcode.com/">Advent of Code</a> (AOC) is an Advent calendar of small programming puzzles.
+Starting on December 1st, a new programming puzzle is unlocked every day until Christmas.
+Each day’s puzzle has two parts.
+The difficulty of the puzzles increases as the days progress.
+Lots of people complete AOC puzzles for many reasons.
+Some enjoy the thrill of competing for the top leaderboard spot right as the puzzle unlocks at midnight.
+Most people (myself included) use the puzzles as a way to practice a new programming language.</p>
+<p>The first few days are typically quite trivial
+which gives people a lot of creative liberty in how they choose to solve it.
+Many people <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Code_golf">code golf</a>, use esoteric languages (like the <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Shakespeare_Programming_Language">Shakespeare Programming Language</a>, or even Microsoft Excel!), or find some bizarre but entertaining way to challenge themselves to solve the problem.</p>
+<p>This year I decided to learn the basics of x86 assembly and solve the first problem at the lowest level possible, resulting in all kinds of headaches and ultimately a solution which was too fast to even benchmark.
+Join me on a journey into the ancient and dangerous world of assembly language.</p>
+<h1 id="Day-1-The-Problem"><a href="#Day-1-The-Problem" class="headerlink" title="Day 1: The Problem"></a>Day 1: The Problem</h1><p>The <a target="_blank" rel="noopener" href="https://adventofcode.com/2022/day/1">day 1 puzzle</a> requires you to count the calories being carried by the elves as they begin their expedition into the jungle.
+Each line in the puzzle input represents calories from a meal.
+Each group of calories represents an elf’s total meals.
+Elves are separated by a blank line.
+In the example input below, the first elf is carrying 6,000 calories,
+the second 4,000, and so on:</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><code class="hljs plaintext">1000<br>2000<br>3000<br><br>4000<br><br>5000<br>6000<br><br>7000<br>8000<br>9000<br><br>10000<br></code></pre></td></tr></table></figure>
+
+<p>In order to solve Part 1, you must find the elf carrying the most calories, and find the number of total calories he has.</p>
+<p>The problem is simple, and the solution is straightforward.
+We need to loop over every group of elves, sum their calories,
+and keep track of the largest sum, overwriting it when we find a bigger number.</p>
+<h2 id="Parsing-the-Input"><a href="#Parsing-the-Input" class="headerlink" title="Parsing the Input"></a>Parsing the Input</h2><p>Our first challenge in assembly is to parse our input.
+We are at the lowest level of programming that there is.
+Nothing is available to us.
+Unless you link your program with something like the C standard library,
+you’re completely on your own in every regard.
+In order to read a file you need to dive into system calls and write code for string parsing.
+I chose a different option however: format the input to work directly in our program.</p>
+<p>Our input is just a series of numbers separated by a newline.
+In fact, if you replace the newlines with <code>-1</code>,
+our input suddenly becomes a contiguous array of numbers.
+All you have to do is throw it in a data section, give it a label,
+and append <code>.long</code> in front of each number, and you’ve got yourself
+a bona fide array of signed integers immediately ready to be used:</p>
+<figure class="highlight x86asm"><table><tr><td class="code"><pre><code class="hljs x86asm"><span class="hljs-meta">.data</span><br><span class="hljs-meta">.global</span> nums<br><span class="hljs-symbol">nums:</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">1000</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">2000</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">3000</span><br><span class="hljs-meta">.long</span> -<span class="hljs-number">1</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">4000</span><br><span class="hljs-meta">.long</span> -<span class="hljs-number">1</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">5000</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">6000</span><br><span class="hljs-meta">.long</span> -<span class="hljs-number">1</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">7000</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">8000</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">9000</span><br><span class="hljs-meta">.long</span> -<span class="hljs-number">1</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">10000</span><br><span class="hljs-comment">; and so on...</span><br></code></pre></td></tr></table></figure>
+
+<p>This can be linked directly into our program,
+and we don’t have to spend
+any time at all parsing a file.</p>
+<h2 id="Solving-Part-1"><a href="#Solving-Part-1" class="headerlink" title="Solving Part 1"></a>Solving Part 1</h2><p>The first real problem we run into is that it’s
+kind of difficult to even know what your assembly
+program is doing, or if it’s even working at all.</p>
+<p>Let’s write the most minimal program in assembly possible,
+and then we can set up a small
+C driver to call our function and print the result.
+When we build and link these two programs together, we have
+a system where we can write our solution in assembly,
+but also see the result of our code.</p>
+<figure class="highlight x86asm"><figcaption><span>day01.s</span></figcaption><table><tr><td class="code"><pre><code class="hljs x86asm"><span class="hljs-meta">.text</span><br><span class="hljs-meta"></span><br><span class="hljs-meta">.global</span> part1<br><span class="hljs-symbol">part1:</span><br>    <span class="hljs-comment">; the return value is expected in the EAX register in x86 calling convention</span><br>    <span class="hljs-comment">; this is equal to &quot;return 42;&quot; in C</span><br>    movl <span class="hljs-number">$42</span>, %eax<br>    <span class="hljs-keyword">ret</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight c"><figcaption><span>day01.c</span></figcaption><table><tr><td class="code"><pre><code class="hljs c"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&quot;stdio.h&quot;</span></span><br><br><span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span>;<br><br><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> &#123;<br><br>  <span class="hljs-type">int</span> p1 = part1();<br>  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p1);<br><br>  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>After a lot of trial and error + painful debugging,
+I wrote enough code
+to complete the first part of the problem
+and be awarded with the first star:</p>
+<figure class="highlight x86asm"><table><tr><td class="code"><pre><code class="hljs x86asm"><span class="hljs-meta">.global</span> part1<br><span class="hljs-symbol">part1:</span><br>    movl <span class="hljs-number">$0</span>, %ebx <span class="hljs-comment">; highestSoFar</span><br>    movl <span class="hljs-number">$0</span>, %ecx <span class="hljs-comment">; counter</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.ResetAndAdd:</span><br>    movl <span class="hljs-number">$0</span>, %edx <span class="hljs-comment">; accumulator</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.AddNext:</span><br>    leaq nums(%rip), %rax <span class="hljs-comment">; get start address of our number array</span><br>    addq %rcx,  %rax <span class="hljs-comment">; add our current offset</span><br>    movl (%rax), %eax <span class="hljs-comment">; move the value of that address into eax</span><br>    addl <span class="hljs-number">$4</span>, %ecx <span class="hljs-comment">; add 4 (bytes) to our counter, effectively i++</span><br><br>    cmpl $-<span class="hljs-number">1</span>, %eax <span class="hljs-comment">; test to see if the number is a newline (-1)</span><br>    <span class="hljs-keyword">je</span> .NextElf <span class="hljs-comment">; if -1, run our code for the next elf.</span><br><br>    addl %eax, %edx <span class="hljs-comment">; otherwise, add the number to our accumulator</span><br>    <span class="hljs-keyword">jmp</span> .AddNext<br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.NextElf:</span><br>    <span class="hljs-comment">; if we have looked through all the numbers, return</span><br>    cmpl <span class="hljs-number">$8948</span>, %ecx <span class="hljs-comment">; 8948 = len(nums) * 4 bytes per number</span><br>    <span class="hljs-keyword">jge</span> .Finish <span class="hljs-comment">; if we&#x27;ve looked at all the input, return</span><br><br>    <span class="hljs-comment">; check if new sum is &gt; ebx</span><br>    cmpl %ebx, %edx<br>    <span class="hljs-keyword">jle</span> .ResetAndAdd<br><br>    <span class="hljs-comment">; it is greater than</span><br>    movl %edx, %ebx <span class="hljs-comment">; move new value into highestSoFar</span><br>    <span class="hljs-keyword">jmp</span> .ResetAndAdd<br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.Finish:</span><br>    movl %ebx, %eax <span class="hljs-comment">; return highestSoFar</span><br>    <span class="hljs-keyword">ret</span><br></code></pre></td></tr></table></figure>
+
+<p>This assembly function written in C would look like this:</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> nums[];<br><br><span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span> &#123;<br>  <span class="hljs-type">int</span> highestSoFar = <span class="hljs-number">0</span>;<br>  <span class="hljs-type">int</span> accumulator = <span class="hljs-number">0</span>;<br><br>  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">2237</span>; i++) &#123;<br><br>    <span class="hljs-type">int</span> number = nums[i];<br><br>    <span class="hljs-keyword">if</span> (number == <span class="hljs-number">-1</span>) &#123;<br>      <span class="hljs-keyword">if</span> (accumulator &gt; highestSoFar) &#123;<br>        highestSoFar = accumulator;<br>      &#125;<br>      accumulator = <span class="hljs-number">0</span>;<br>      <span class="hljs-keyword">continue</span>;<br>    &#125;<br><br>    accumulator += number;<br>  &#125;<br><br>  <span class="hljs-keyword">return</span> highestSoFar;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>Even while writing this small assembly program,
+I shot myself in the foot several times.
+When you screw up in assembly, you have nobody to help you.
+There is no compiler or tooling to hold your hand.
+It is just you vs. pure logic, and the computer will do exactly
+what you tell it to do, even to a horrible fault.</p>
+<h3 id="Who-What-When-Where-Why"><a href="#Who-What-When-Where-Why" class="headerlink" title="Who? What? When? Where? Why?"></a>Who? What? When? Where? Why?</h3><p>There is also a surprising amount of context that you must learn if you’re new to assembly.
+Which registers are you able to use safely?
+You really only have four registers available to you:
+<code>eax</code>, <code>ebx</code>, <code>ecx</code>, and <code>edx</code>.
+These are the four general registers and how the programmer uses them defines
+their meaning.
+Before I realized that you can really only work with these, I tried
+using <code>esp</code> for example and my program would not work.
+Why? I was modifying the stack pointer unknowingly to use the register in my own calculations and that is a big no-no.
+Even though these registers are special (and should be off-limits), nothing is there to stop you from using them.
+Realizing that I only had four registers available felt very limiting.
+That’s when you realize you have to start using the stack or creating variables in data sections to start holding your calculations and move those values in and out of registers.</p>
+<p>This means that you have to juggle so much more <strong>context</strong> in your head about your program.
+If you have a variable that has some meaning, along with remembering <strong>what</strong> it is, you also have to remember <strong>where</strong> it is.
+This realization shows you just how much we take for granted in our high level languages.</p>
+<p>For example, in C we can define a variable, do other stuff, and then add to that variable later.
+We never have to care <em>where</em> that variable is in memory.
+Is it already in a register? Is it on the stack, or in a data section?
+Do I need to move it into a register before I can work with it?
+Which registers am I not using at this exact spot in my program?
+Who cares.
+We don’t have to mentally keep track of it,
+The compiler abstracts that away for us:</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> x = <span class="hljs-number">0</span>;<br><br><span class="hljs-comment">// ...</span><br><br><span class="hljs-comment">// What a luxury! We don&#x27;t have to think about</span><br><span class="hljs-comment">// where &#x27;x&#x27; is at all. We just use it.</span><br>x += <span class="hljs-number">40</span>;<br></code></pre></td></tr></table></figure>
+
+<p>In assembly, it is 100% up to you to determine how your program uses memory at every level, and where that memory is stored. Is it on the stack or in a register? Is that variable at offset <code>4</code> or <code>8</code> on the stack again? I can’t remember.
+Now imagine that you have loaded a variable from an incorrect memory address.
+You’ve just broken your program in a non-obvious way,
+and the only way to realize it is through a painful amount of debugging.</p>
+<h3 id="One-Missing-Character-to-Ruin-Your-Day"><a href="#One-Missing-Character-to-Ruin-Your-Day" class="headerlink" title="One Missing Character to Ruin Your Day"></a>One Missing Character to Ruin Your Day</h3><p>While solving part 1, I made an assumption that bit me hard:
+I assumed the default jump instruction was <code>jp</code>. Spoiler alert: it isn’t.</p>
+<p>It took me tearing apart my whole program to realize my problem: My jump instruction isn’t working how I expected it to. This led me to find out that the jump instruction I wanted is actually <code>jmp</code>.
+<code>jp</code> was a real instruction, but it was short for <code>Jump short if parity</code>, only branching if the parity flag was set.
+One innocent missing <code>m</code> caused me a lot of headache.</p>
+<p>Control flow instructions are another thing that you just never have to care about in a high level language.
+The compiler will always create the correct one based on your code.</p>
+<h2 id="Solving-Part-2"><a href="#Solving-Part-2" class="headerlink" title="Solving Part 2"></a>Solving Part 2</h2><p>Typically, the second part of an AOC problem will ask for more, and expose faults in the speed of your code or the flexibility of your implementation.
+The second part for Day 1 was no exception:</p>
+<blockquote>
+<p>Find the top three Elves carrying the most Calories. How many Calories are those Elves carrying in total?</p>
+</blockquote>
+<p>And boy, assembly language is the least flexible language out there.
+Fortunately it wasn’t too bad to adapt the program
+to handle the top three elves instead of one.</p>
+<p>Instead of re-calculating everything in another function,
+I add a data section to hold the results,
+and then calculate the top three elves in part 1 while only returning the top one.
+In part two I then take the top three from the calculations and return their sum.</p>
+<figure class="highlight x86asm"><table><tr><td class="code"><pre><code class="hljs x86asm"><span class="hljs-meta">.data</span><br><span class="hljs-symbol">ans:</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">0</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">0</span><br><span class="hljs-meta">.long</span> <span class="hljs-number">0</span><br><span class="hljs-meta"></span><br><span class="hljs-meta">.text</span><br><span class="hljs-meta"></span><br><span class="hljs-meta">.global</span> part1<br><span class="hljs-symbol">part1:</span><br>    movl <span class="hljs-number">$0</span>, %ebx <span class="hljs-comment">; highestSoFar</span><br>    movl <span class="hljs-number">$0</span>, %ecx <span class="hljs-comment">; counter</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.ResetAndAdd:</span><br>    movl <span class="hljs-number">$0</span>, %edx <span class="hljs-comment">; accumulator</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.AddNext:</span><br>    leaq nums(%rip), %rax<br>    addq %rcx,  %rax<br>    movl (%rax), %eax<br>    addl <span class="hljs-number">$4</span>, %ecx<br><br>    cmpl $-<span class="hljs-number">1</span>, %eax<br>    <span class="hljs-keyword">je</span> .NextElf<br><br>    addl %eax, %edx<br>    <span class="hljs-keyword">jmp</span> .AddNext<br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.NextElf:</span><br>    <span class="hljs-comment">; iif we have looked through all the numbers, return</span><br>    cmpl <span class="hljs-number">$8948</span>, %ecx<br>    <span class="hljs-keyword">jge</span> .Finish<br><br>    <span class="hljs-comment">; check if new sum is &gt; ans[0] through ans[2]</span><br>    movl ans(%rip), %ebx<br>    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[0] to accumulator</span><br>    <span class="hljs-keyword">jle</span> .Ans1<br>    movl %edx, ans(%rip)<br>    <span class="hljs-keyword">jmp</span> .ResetAndAdd<br><span class="hljs-symbol">    .Ans1:</span><br>    movl <span class="hljs-number">4</span>+ans(%rip), %ebx<br>    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[1] to accumulator</span><br>    <span class="hljs-keyword">jle</span> .Ans2<br>    movl %edx, <span class="hljs-number">4</span>+ans(%rip)<br>    <span class="hljs-keyword">jmp</span> .ResetAndAdd<br><span class="hljs-symbol">    .Ans2:</span><br>    movl <span class="hljs-number">8</span>+ans(%rip), %ebx<br>    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[2] to accumulator</span><br>    <span class="hljs-keyword">jle</span> .ResetAndAdd<br>    movl %edx, <span class="hljs-number">8</span>+ans(%rip)<br>    <span class="hljs-keyword">jmp</span> .ResetAndAdd<br><span class="hljs-symbol"></span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">.Finish:</span><br>    movl ans(%rip), %eax<br>    <span class="hljs-keyword">ret</span><br><span class="hljs-meta"></span><br><span class="hljs-meta">.global</span> part2<br><span class="hljs-symbol">part2:</span><br>    movl <span class="hljs-number">$0</span>, %eax<br>    addl ans(%rip), %eax<br>    addl <span class="hljs-number">4</span>+ans(%rip), %eax<br>    addl <span class="hljs-number">8</span>+ans(%rip), %eax<br>    <span class="hljs-keyword">ret</span><br></code></pre></td></tr></table></figure>
+
+<p>This approach in assembly when literally translated to C would look like this:</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><code class="hljs c"><span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> nums[];<br><br><span class="hljs-type">int</span> ans[<span class="hljs-number">3</span>] = &#123;<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>&#125;;<br><br><span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span> &#123;<br>  <span class="hljs-type">int</span> accumulator = <span class="hljs-number">0</span>;<br><br>  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">2237</span>; i++) &#123;<br><br>    <span class="hljs-type">int</span> number = nums[i];<br><br>    <span class="hljs-keyword">if</span> (number == <span class="hljs-number">-1</span>) &#123;<br>      <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">0</span>]) &#123;<br>        ans[<span class="hljs-number">0</span>] = accumulator;<br>      &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">1</span>]) &#123;<br>        ans[<span class="hljs-number">1</span>] = accumulator;<br>      &#125; <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">2</span>]) &#123;<br>        ans[<span class="hljs-number">2</span>] = accumulator;<br>      &#125;<br>      accumulator = <span class="hljs-number">0</span>;<br>      <span class="hljs-keyword">continue</span>;<br>    &#125;<br><br>    accumulator += number;<br>  &#125;<br><br>  <span class="hljs-keyword">return</span> ans[<span class="hljs-number">0</span>];<br>&#125;<br><br><span class="hljs-type">int</span> <span class="hljs-title function_">part2</span><span class="hljs-params">()</span> &#123;<br>  <span class="hljs-keyword">return</span> ans[<span class="hljs-number">0</span>] + ans[<span class="hljs-number">1</span>] + ans[<span class="hljs-number">2</span>];<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>And while this C code is somewhat ugly, it accurately
+demonstrates the logic of how the assembly code I wrote works.
+I was quite happy to be able to solve both parts in x86.</p>
+<p>Naturally I wanted to know how long it took to calculate
+the answer.
+After trying to time <code>part1()</code> with C’s <code>clock</code>,
+it was completing so fast that <code>clock</code> returned the same
+number both before and after calling <code>part1()</code>.</p>
+<p>I read about methods to get around this, and one
+suggested running the function in a loop <code>n</code> number of times
+and then dividing the time spent by <code>n</code>:</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><code class="hljs c"><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> &#123;<br><br>  <span class="hljs-type">clock_t</span> start, end;<br>  <span class="hljs-type">double</span> cpu_time_used;<br>  <span class="hljs-type">int</span> p1 = <span class="hljs-number">0</span>;<br><br>  start = clock();<br>  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">1000000</span>; i++) &#123;<br>    p1 = part1();<br>  &#125;<br>  end = clock();<br>  cpu_time_used = ((<span class="hljs-type">double</span>)(end - start)) / CLOCKS_PER_SEC / <span class="hljs-number">1000000</span>;<br><br>  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p1);<br><br>  <span class="hljs-type">int</span> p2 = part2();<br>  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p2);<br>  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Done in %.50f seconds\n&quot;</span>, cpu_time_used);<br><br>  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>Which outputs:
+<code>Done in 0.000001135999 seconds</code>
+on my average 2.8Ghz Intel i7 laptop.</p>
+<p>It’s not clear to me how much time is added
+by the time it takes to loop and call the function,
+but even with that added overhead it seems to be completing in
+an average of 1 microsecond.
+That’s pretty fast.
+An example Rust program that someone else wrote for part 1
+was able to solve it in 27 microseconds, but that included
+parsing the input, whereas my version has no input parsing.</p>
+<h1 id="Takeaways"><a href="#Takeaways" class="headerlink" title="Takeaways"></a>Takeaways</h1><p>Programming in assembly language
+gives me a new-found respect for how much high-level languages give us by abstracting away all the tedium and potential room for error.
+Low level languages such as C or C++ have a bad reputation for allowing people to shoot themselves in the foot,
+but the room for error in assembly feels exponentially greater.
+High level languages protect us from a huge amount of potential problems that most of us probably didn’t realize existed in the first place.
+This isn’t even taking into consideration garbage collection
+and other niceties even higher-level languages offer.</p>
+<p>Writing in C again after writing in x86 feels like going from crawling
+on the ground through broken glass
+to riding a bike down the road with a nice breeze on a summer day.</p>
+
+</article>
+        </div>
+    </body>
+</html>

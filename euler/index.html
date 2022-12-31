@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
-    <head><meta name="generator" content="Hexo 3.9.0">
+    <head>
         <title>What I learned solving 70+ Project Euler problems</title>
-<link rel="stylesheet" type="text/css" href="/css/normalize.css">
-<link rel="stylesheet" type="text/css" href="/css/style.css">
+<link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="/css/style.css"/>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-    </head>
+    <meta name="generator" content="Hexo 6.3.0"></head>
     <body>
         <div id="container">
             <header>
@@ -26,8 +26,8 @@
         
     </div>
     <p><img src="https://projecteuler.net/profile/mp32.png" alt="Project Euler Badge"></p>
-<p><a href="https://projecteuler.net/" target="_blank" rel="noopener">Project Euler</a> is a website dedicated to mathematical/computational problems intended to be solved by computer programs.
-Today I just submitted my 70th correct answer, which places me near the <a href="https://projecteuler.net/problem_analysis" target="_blank" rel="noopener">top 2%</a> out of nearly 1,000,000 users by number of problems solved.</p>
+<p><a target="_blank" rel="noopener" href="https://projecteuler.net/">Project Euler</a> is a website dedicated to mathematical&#x2F;computational problems intended to be solved by computer programs.
+Today I just submitted my 70th correct answer, which places me near the <a target="_blank" rel="noopener" href="https://projecteuler.net/problem_analysis">top 2%</a> out of nearly 1,000,000 users by number of problems solved.</p>
 <!--
 My original goal was to solve the first 100, but the remaining problems are either too mathematically difficult for me,
 or just not fun enough for me to want to solve.
@@ -45,7 +45,7 @@ and what makes certain programming languages well suited for solving these kinds
 This usually means searching a large number range for numbers that meet certain criteria.
 The size of the search space usually makes brute force solutions very time consuming or difficult, but not impossible.
 A slow brute force solution often encourages (and sometimes demands) creativity in order to solve the problem in a reasonable amount of time.</p>
-<p>For the simplest example, let’s take a look at <a href="https://projecteuler.net/problem=1" target="_blank" rel="noopener">Problem 1</a>:</p>
+<p>For the simplest example, let’s take a look at <a target="_blank" rel="noopener" href="https://projecteuler.net/problem=1">Problem 1</a>:</p>
 <blockquote>
 <p>If we list all the natural numbers below 10 that are multiples of 3 or 5, we get 3, 5, 6 and 9. The sum of these multiples is 23.
 Find the sum of all the multiples of 3 or 5 below 1000.</p>
@@ -53,12 +53,12 @@ Find the sum of all the multiples of 3 or 5 below 1000.</p>
 <p>In order to solve Problem 1, we have to check each number between 1 and 1000, determine
 if it is evenly divisible by 3 or 5, and if so, add it to our total.
 Of course the solution to this problem is easy, and it can be solved in one line of Python code:</p>
-<pre><code class="hljs python">print(sum(filter(<span class="hljs-keyword">lambda</span> x: x % <span class="hljs-number">5</span> == <span class="hljs-number">0</span> <span class="hljs-keyword">or</span> x % <span class="hljs-number">3</span> == <span class="hljs-number">0</span>, range(<span class="hljs-number">1000</span>))))</code></pre>
+<figure class="highlight python"><table><tr><td class="code"><pre><code class="hljs python"><span class="hljs-built_in">print</span>(<span class="hljs-built_in">sum</span>(<span class="hljs-built_in">filter</span>(<span class="hljs-keyword">lambda</span> x: x % <span class="hljs-number">5</span> == <span class="hljs-number">0</span> <span class="hljs-keyword">or</span> x % <span class="hljs-number">3</span> == <span class="hljs-number">0</span>, <span class="hljs-built_in">range</span>(<span class="hljs-number">1000</span>))))<br></code></pre></td></tr></table></figure>
 
 <p>As we can see, problem 1 is simple enough to be brute forced in milliseconds.
 However, not all problems are this straightforward.</p>
 <h2 id="Cubic-Permutations"><a href="#Cubic-Permutations" class="headerlink" title="Cubic Permutations"></a>Cubic Permutations</h2><p>Let’s take a look at one of my favorite problems,
-<a href="https://projecteuler.net/problem=62" target="_blank" rel="noopener">Problem 62</a>:</p>
+<a target="_blank" rel="noopener" href="https://projecteuler.net/problem=62">Problem 62</a>:</p>
 <blockquote>
 <p>The cube, 41063625 (345^3), can be permuted to produce two other cubes: 56623104 (384^3) and 66430125 (405^3). In fact, 41063625 is the smallest cube which has exactly three permutations of its digits which are also cube.</p>
 <p>Find the smallest cube for which exactly five permutations of its digits are cube.</p>
@@ -73,69 +73,23 @@ gives me an idea as to how difficult of a problem it is.</p>
 Then I iterated from 125 to 1000 (can’t remember why I chose this range), testing the permutations of each cube.
 If any one of the permutations was found in the list, I increment the cube counter.
 Once it hits 5, I break.</p>
-<pre><code class="hljs python"><span class="hljs-keyword">from</span> itertools <span class="hljs-keyword">import</span> permutations
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">cube</span><span class="hljs-params">(n)</span>:</span>
-    total = <span class="hljs-number">1</span>
-    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>, <span class="hljs-number">3</span>):
-        total = total * n
-    <span class="hljs-keyword">return</span> total
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">problem62</span><span class="hljs-params">()</span>:</span>
-    cubes = []
-    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">0</span>, int(<span class="hljs-number">1000</span>)):
-        cubes.append(str(cube(i)))
-
-    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> range(<span class="hljs-number">125</span>, <span class="hljs-number">1000</span>):
-        print(i)
-        n = cube(i)
-        perms = permutations(str(n))
-        numCubes = <span class="hljs-number">0</span>
-        <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> perms:
-            s = <span class="hljs-string">''</span>.join(p)
-            <span class="hljs-keyword">if</span> s <span class="hljs-keyword">in</span> cubes:
-                numCubes += <span class="hljs-number">1</span>
-        <span class="hljs-keyword">if</span> numCubes == <span class="hljs-number">5</span>:
-            <span class="hljs-keyword">break</span>
-    print(i)</code></pre>
+<figure class="highlight python"><table><tr><td class="code"><pre><code class="hljs python"><span class="hljs-keyword">from</span> itertools <span class="hljs-keyword">import</span> permutations<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">cube</span>(<span class="hljs-params">n</span>):<br>    total = <span class="hljs-number">1</span><br>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, <span class="hljs-number">3</span>):<br>        total = total * n<br>    <span class="hljs-keyword">return</span> total<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">problem62</span>():<br>    cubes = []<br>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">0</span>, <span class="hljs-built_in">int</span>(<span class="hljs-number">1000</span>)):<br>        cubes.append(<span class="hljs-built_in">str</span>(cube(i)))<br><br>    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">range</span>(<span class="hljs-number">125</span>, <span class="hljs-number">1000</span>):<br>        <span class="hljs-built_in">print</span>(i)<br>        n = cube(i)<br>        perms = permutations(<span class="hljs-built_in">str</span>(n))<br>        numCubes = <span class="hljs-number">0</span><br>        <span class="hljs-keyword">for</span> p <span class="hljs-keyword">in</span> perms:<br>            s = <span class="hljs-string">&#x27;&#x27;</span>.join(p)<br>            <span class="hljs-keyword">if</span> s <span class="hljs-keyword">in</span> cubes:<br>                numCubes += <span class="hljs-number">1</span><br>        <span class="hljs-keyword">if</span> numCubes == <span class="hljs-number">5</span>:<br>            <span class="hljs-keyword">break</span><br>    <span class="hljs-built_in">print</span>(i)<br></code></pre></td></tr></table></figure>
 
 <p>This approach was very slow, and was only able to search about ~400 cubes in 11 minutes without an answer.
 This is also under the assumption that the answer could be found within the first 1000 cubes.
-If the answer was over i=1000, this algorithm would explode…
+If the answer was over i&#x3D;1000, this algorithm would explode…
 This tells me that I need to take a different approach:</p>
 <h3 id="Attempt-2"><a href="#Attempt-2" class="headerlink" title="Attempt 2"></a>Attempt 2</h3><p>This time around I didn’t store a list of cubes to search through.
 Continually searching through a large list is costly and can slow things to a crawl.
 Now I take every number, cube it, and for each permutation I use math to see if it’s a cubed number
 instead of looking the permutation up in a list of cubes.</p>
-<pre><code class="hljs python"><span class="hljs-keyword">from</span> itertools <span class="hljs-keyword">import</span> permutations
-<span class="hljs-keyword">import</span> math
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">cube</span><span class="hljs-params">(n)</span>:</span>
-    <span class="hljs-keyword">return</span> int(math.pow(n, <span class="hljs-number">3</span>))
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">isCube</span><span class="hljs-params">(n)</span>:</span>
-    <span class="hljs-keyword">if</span> n &lt;= <span class="hljs-number">1</span>:
-        <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span>
-    <span class="hljs-keyword">return</span> n == cube(round(n ** (<span class="hljs-number">1</span> / <span class="hljs-number">3</span>)))
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">problem62</span><span class="hljs-params">()</span>:</span>
-    i = <span class="hljs-number">2</span>
-    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
-        print(i)
-        n = cube(i)
-        perms = list(filter(isCube, set(map(<span class="hljs-keyword">lambda</span> x: int(<span class="hljs-string">''</span>.join(x)), permutations(str(n))))))
-        <span class="hljs-keyword">if</span> len(perms) &gt;= <span class="hljs-number">5</span>:
-            lens = list(filter(<span class="hljs-keyword">lambda</span> x: len(str(x)) == len(str(n)), perms))
-            <span class="hljs-keyword">if</span> len(lens) == <span class="hljs-number">5</span>:
-                print(i, lens)
-                <span class="hljs-keyword">break</span>
-        i += <span class="hljs-number">1</span></code></pre>
+<figure class="highlight python"><table><tr><td class="code"><pre><code class="hljs python"><span class="hljs-keyword">from</span> itertools <span class="hljs-keyword">import</span> permutations<br><span class="hljs-keyword">import</span> math<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">cube</span>(<span class="hljs-params">n</span>):<br>    <span class="hljs-keyword">return</span> <span class="hljs-built_in">int</span>(math.<span class="hljs-built_in">pow</span>(n, <span class="hljs-number">3</span>))<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">isCube</span>(<span class="hljs-params">n</span>):<br>    <span class="hljs-keyword">if</span> n &lt;= <span class="hljs-number">1</span>:<br>        <span class="hljs-keyword">return</span> <span class="hljs-literal">False</span><br>    <span class="hljs-keyword">return</span> n == cube(<span class="hljs-built_in">round</span>(n ** (<span class="hljs-number">1</span> / <span class="hljs-number">3</span>)))<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">problem62</span>():<br>    i = <span class="hljs-number">2</span><br>    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:<br>        <span class="hljs-built_in">print</span>(i)<br>        n = cube(i)<br>        perms = <span class="hljs-built_in">list</span>(<span class="hljs-built_in">filter</span>(isCube, <span class="hljs-built_in">set</span>(<span class="hljs-built_in">map</span>(<span class="hljs-keyword">lambda</span> x: <span class="hljs-built_in">int</span>(<span class="hljs-string">&#x27;&#x27;</span>.join(x)), permutations(<span class="hljs-built_in">str</span>(n))))))<br>        <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(perms) &gt;= <span class="hljs-number">5</span>:<br>            lens = <span class="hljs-built_in">list</span>(<span class="hljs-built_in">filter</span>(<span class="hljs-keyword">lambda</span> x: <span class="hljs-built_in">len</span>(<span class="hljs-built_in">str</span>(x)) == <span class="hljs-built_in">len</span>(<span class="hljs-built_in">str</span>(n)), perms))<br>            <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(lens) == <span class="hljs-number">5</span>:<br>                <span class="hljs-built_in">print</span>(i, lens)<br>                <span class="hljs-keyword">break</span><br>        i += <span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
 
 <p>This ended up being quite faster than my first attempt. The second attempt processed ~400 numbers in
 about 11 seconds, as opposed to 11 minutes.
 I felt more confident in this one.
 However, as the numbers grew, the program slowed again.
-After waiting nearly 2 hours, my program was only at i=2200 without an answer.
+After waiting nearly 2 hours, my program was only at i&#x3D;2200 without an answer.
 Even though this seemed faster, it wasn’t good enough.
 It was time to go back to the drawing board for a third time.</p>
 <h3 id="Attempt-3"><a href="#Attempt-3" class="headerlink" title="Attempt 3"></a>Attempt 3</h3><p>At this point it was clear that any kind of brute force search or calculations of permutations
@@ -147,26 +101,7 @@ If I treat the cube as a string and sort the individual numbers,
 that result could be used as a key in a dictionary.
 Effectively, I could have a dictionary which holds lists of numbers which are indexed by their sorted cube hash.
 When a list reaches 5 elements, that is the list that we care about.</p>
-<pre><code class="hljs python"><span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">cube</span><span class="hljs-params">(n)</span>:</span>
-    <span class="hljs-keyword">return</span> n ** <span class="hljs-number">3</span>
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">toKey</span><span class="hljs-params">(n)</span>:</span>
-    <span class="hljs-keyword">return</span> <span class="hljs-string">''</span>.join(sorted(str(n)))
-
-<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">problem62</span><span class="hljs-params">()</span>:</span>
-    cubes = &#123;&#125;
-    i = <span class="hljs-number">1</span>
-    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:
-        key = toKey(cube(i))
-        perms = cubes.get(key)
-        <span class="hljs-keyword">if</span> perms == <span class="hljs-literal">None</span>:
-            cubes[key] = [i]
-        <span class="hljs-keyword">else</span>:
-            cubes[key].append(i)
-            <span class="hljs-keyword">if</span> len(cubes[key]) == <span class="hljs-number">5</span>:
-                print(min(map(cube, cubes[key])))
-                <span class="hljs-keyword">break</span>
-        i += <span class="hljs-number">1</span></code></pre>
+<figure class="highlight python"><table><tr><td class="code"><pre><code class="hljs python"><span class="hljs-keyword">def</span> <span class="hljs-title function_">cube</span>(<span class="hljs-params">n</span>):<br>    <span class="hljs-keyword">return</span> n ** <span class="hljs-number">3</span><br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">toKey</span>(<span class="hljs-params">n</span>):<br>    <span class="hljs-keyword">return</span> <span class="hljs-string">&#x27;&#x27;</span>.join(<span class="hljs-built_in">sorted</span>(<span class="hljs-built_in">str</span>(n)))<br><br><span class="hljs-keyword">def</span> <span class="hljs-title function_">problem62</span>():<br>    cubes = &#123;&#125;<br>    i = <span class="hljs-number">1</span><br>    <span class="hljs-keyword">while</span> <span class="hljs-literal">True</span>:<br>        key = toKey(cube(i))<br>        perms = cubes.get(key)<br>        <span class="hljs-keyword">if</span> perms == <span class="hljs-literal">None</span>:<br>            cubes[key] = [i]<br>        <span class="hljs-keyword">else</span>:<br>            cubes[key].append(i)<br>            <span class="hljs-keyword">if</span> <span class="hljs-built_in">len</span>(cubes[key]) == <span class="hljs-number">5</span>:<br>                <span class="hljs-built_in">print</span>(<span class="hljs-built_in">min</span>(<span class="hljs-built_in">map</span>(cube, cubes[key])))<br>                <span class="hljs-keyword">break</span><br>        i += <span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
 
 <p>The results were amazing!
 The correct answer is found in 30 milliseconds!
@@ -180,7 +115,7 @@ Clojure, and functional programming.
 However, as time went on, I found it more fun to see how elegantly I could solve
 the problems with a language I felt more comfortable with.
 I began using Python to solve the problems.
-I also wrote a handy <a href="https://github.com/mattbruv/project-euler/blob/master/run.py" target="_blank" rel="noopener">little wrapper script</a>
+I also wrote a handy <a target="_blank" rel="noopener" href="https://github.com/mattbruv/project-euler/blob/master/run.py">little wrapper script</a>
 which can run any problem simply by calling <code>python run.py [problem number]</code>.
 This script would execute the problem and return the amount of time taken for it to run,
 or the amount of time taken if exited prematurely.
@@ -198,73 +133,18 @@ not fighting against the language.</p>
 <p>Clojure is worth mentioning as well.
 I found that the Clojure code I wrote ended up being prettier
 and easier to follow than some of the other submissions.
-For example, this is my solution to <a href="https://projecteuler.net/problem=23" target="_blank" rel="noopener">Problem 23</a>:</p>
-<pre><code class="hljs clj">(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> divisors [n]
-  (<span class="hljs-name"><span class="hljs-builtin-name">if</span></span> (<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> n <span class="hljs-number">1</span>)
-    []
-    (<span class="hljs-name"><span class="hljs-builtin-name">filter</span></span> #(<span class="hljs-name"><span class="hljs-builtin-name">=</span></span> <span class="hljs-number">0</span> (<span class="hljs-name"><span class="hljs-builtin-name">rem</span></span> n %)) (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">1</span> n))))
-
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-abundant [n] (<span class="hljs-name"><span class="hljs-builtin-name">&lt;</span></span> n (<span class="hljs-name"><span class="hljs-builtin-name">reduce</span></span> + (<span class="hljs-name">divisors</span> n))))
-
-(<span class="hljs-name"><span class="hljs-builtin-name">def</span></span> abundants (<span class="hljs-name">set</span> (<span class="hljs-name"><span class="hljs-builtin-name">filter</span></span> is-abundant (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">1</span> <span class="hljs-number">28123</span>))))
-
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> is-non-abundant-sum [n]
-  (<span class="hljs-name"><span class="hljs-builtin-name">not-any?</span></span> #(<span class="hljs-name"><span class="hljs-builtin-name">contains?</span></span> abundants (<span class="hljs-name"><span class="hljs-builtin-name">-</span></span> n %)) abundants))
-
-(<span class="hljs-name"><span class="hljs-builtin-name">defn</span></span> problem23 [] (<span class="hljs-name"><span class="hljs-builtin-name">reduce</span></span> + (<span class="hljs-name"><span class="hljs-builtin-name">filter</span></span> is-non-abundant-sum (<span class="hljs-name"><span class="hljs-builtin-name">range</span></span> <span class="hljs-number">1</span> <span class="hljs-number">28123</span>))))</code></pre>
+For example, this is my solution to <a target="_blank" rel="noopener" href="https://projecteuler.net/problem=23">Problem 23</a>:</p>
+<figure class="highlight clj"><table><tr><td class="code"><pre><code class="hljs clj">(<span class="hljs-keyword">defn</span> <span class="hljs-title">divisors</span> [n]<br>  (<span class="hljs-name"><span class="hljs-built_in">if</span></span> (<span class="hljs-name"><span class="hljs-built_in">=</span></span> n <span class="hljs-number">1</span>)<br>    []<br>    (<span class="hljs-name"><span class="hljs-built_in">filter</span></span> #(<span class="hljs-name"><span class="hljs-built_in">=</span></span> <span class="hljs-number">0</span> (<span class="hljs-name"><span class="hljs-built_in">rem</span></span> n %)) (<span class="hljs-name"><span class="hljs-built_in">range</span></span> <span class="hljs-number">1</span> n))))<br><br>(<span class="hljs-keyword">defn</span> <span class="hljs-title">is-abundant</span> [n] (<span class="hljs-name"><span class="hljs-built_in">&lt;</span></span> n (<span class="hljs-name"><span class="hljs-built_in">reduce</span></span> + (<span class="hljs-name">divisors</span> n))))<br><br>(<span class="hljs-keyword">def</span> <span class="hljs-title">abundants</span> (<span class="hljs-name">set</span> (<span class="hljs-name"><span class="hljs-built_in">filter</span></span> is-abundant (<span class="hljs-name"><span class="hljs-built_in">range</span></span> <span class="hljs-number">1</span> <span class="hljs-number">28123</span>))))<br><br>(<span class="hljs-keyword">defn</span> <span class="hljs-title">is-non-abundant-sum</span> [n]<br>  (<span class="hljs-name"><span class="hljs-built_in">not-any?</span></span> #(<span class="hljs-name"><span class="hljs-built_in">contains?</span></span> abundants (<span class="hljs-name"><span class="hljs-built_in">-</span></span> n %)) abundants))<br><br>(<span class="hljs-keyword">defn</span> <span class="hljs-title">problem23</span> [] (<span class="hljs-name"><span class="hljs-built_in">reduce</span></span> + (<span class="hljs-name"><span class="hljs-built_in">filter</span></span> is-non-abundant-sum (<span class="hljs-name"><span class="hljs-built_in">range</span></span> <span class="hljs-number">1</span> <span class="hljs-number">28123</span>))))<br></code></pre></td></tr></table></figure>
 
 <p>Only 9 lines of code to find the answer in 12 seconds.
 Compare this to an average C++ solution found in the solution thread.
 One is easier to read and understand than the other:</p>
-<pre><code class="hljs c++"><span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span>
-</span>&#123;
-    <span class="hljs-keyword">int</span> n=<span class="hljs-number">28123</span>;
-    <span class="hljs-keyword">long</span> <span class="hljs-keyword">long</span> <span class="hljs-keyword">int</span> sum1=<span class="hljs-number">0</span>;
-     <span class="hljs-keyword">int</span> arr[<span class="hljs-number">7000</span>]=&#123;<span class="hljs-number">0</span>&#125;,a=<span class="hljs-number">0</span>;
-    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">int</span> i=<span class="hljs-number">1</span>;i&lt;=n;i++)
-    &#123;
-        <span class="hljs-keyword">int</span> sum=<span class="hljs-number">0</span>;
-        <span class="hljs-keyword">for</span>(<span class="hljs-keyword">int</span> j=<span class="hljs-number">1</span>;j&lt;i;j++)
-        &#123;
-            <span class="hljs-keyword">if</span>(i%j==<span class="hljs-number">0</span>)
-            &#123;
-                sum=sum+j;
-            &#125;
-        &#125;
-        <span class="hljs-keyword">if</span>(sum&gt;i)
-        &#123;
-            arr[a]=i;
-            a++;
-        &#125;
-    &#125;
-    <span class="hljs-keyword">int</span> arr1[<span class="hljs-number">28123</span>]=&#123;<span class="hljs-number">0</span>&#125;;
-    <span class="hljs-keyword">int</span> sum=<span class="hljs-number">0</span>;
-    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">int</span> i=<span class="hljs-number">0</span>;i&lt;a;i++)
-    &#123;
-        <span class="hljs-keyword">for</span>(<span class="hljs-keyword">int</span> j=i;j&lt;a;j++)
-        &#123;
-            <span class="hljs-keyword">if</span>((arr[i]+arr[j])&lt;=n)
-            &#123;
-                sum=arr[i]+arr[j];
-                arr1∑++;
-            &#125;
-            <span class="hljs-keyword">else</span>
-                <span class="hljs-keyword">break</span>;
-        &#125;
-    &#125;
-    sum=<span class="hljs-number">0</span>;
-    <span class="hljs-keyword">for</span>(<span class="hljs-keyword">int</span> i=<span class="hljs-number">0</span>;i&lt;=n;i++)
-    &#123;
-        <span class="hljs-keyword">if</span>(arr1[i]==<span class="hljs-number">0</span>)
-            sum=sum+i;
-    &#125;
-        <span class="hljs-built_in">printf</span>(<span class="hljs-string">"%d"</span>,sum);
-&#125;</code></pre>
+<figure class="highlight c++"><table><tr><td class="code"><pre><code class="hljs c++"><span class="hljs-function"><span class="hljs-type">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span></span><br><span class="hljs-function"></span>&#123;<br>    <span class="hljs-type">int</span> n=<span class="hljs-number">28123</span>;<br>    <span class="hljs-type">long</span> <span class="hljs-type">long</span> <span class="hljs-type">int</span> sum1=<span class="hljs-number">0</span>;<br>     <span class="hljs-type">int</span> arr[<span class="hljs-number">7000</span>]=&#123;<span class="hljs-number">0</span>&#125;,a=<span class="hljs-number">0</span>;<br>    <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i=<span class="hljs-number">1</span>;i&lt;=n;i++)<br>    &#123;<br>        <span class="hljs-type">int</span> sum=<span class="hljs-number">0</span>;<br>        <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> j=<span class="hljs-number">1</span>;j&lt;i;j++)<br>        &#123;<br>            <span class="hljs-keyword">if</span>(i%j==<span class="hljs-number">0</span>)<br>            &#123;<br>                sum=sum+j;<br>            &#125;<br>        &#125;<br>        <span class="hljs-keyword">if</span>(sum&gt;i)<br>        &#123;<br>            arr[a]=i;<br>            a++;<br>        &#125;<br>    &#125;<br>    <span class="hljs-type">int</span> arr1[<span class="hljs-number">28123</span>]=&#123;<span class="hljs-number">0</span>&#125;;<br>    <span class="hljs-type">int</span> sum=<span class="hljs-number">0</span>;<br>    <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>;i&lt;a;i++)<br>    &#123;<br>        <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> j=i;j&lt;a;j++)<br>        &#123;<br>            <span class="hljs-keyword">if</span>((arr[i]+arr[j])&lt;=n)<br>            &#123;<br>                sum=arr[i]+arr[j];<br>                arr1∑++;<br>            &#125;<br>            <span class="hljs-keyword">else</span><br>                <span class="hljs-keyword">break</span>;<br>        &#125;<br>    &#125;<br>    sum=<span class="hljs-number">0</span>;<br>    <span class="hljs-keyword">for</span>(<span class="hljs-type">int</span> i=<span class="hljs-number">0</span>;i&lt;=n;i++)<br>    &#123;<br>        <span class="hljs-keyword">if</span>(arr1[i]==<span class="hljs-number">0</span>)<br>            sum=sum+i;<br>    &#125;<br>        <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d&quot;</span>,sum);<br>&#125;<br></code></pre></td></tr></table></figure>
 
 <p>However Clojure is far from perfect.
 After using it for a handful of problems I am somewhat indifferent to it.
 The long REPL load times, 
-the obnoxiously verbose, cryptic, and unhelpful stack trace/error messages,
+the obnoxiously verbose, cryptic, and unhelpful stack trace&#x2F;error messages,
 and the foul stench of the Java ecosystem underneath it
 was enough to turn me off from the language.</p>
 <h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>After solving 70 problems, I’ve learned the following:</p>

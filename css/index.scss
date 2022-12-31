@@ -1,0 +1,66 @@
+// ==============================
+// Archive
+// =============================
+
+#blogs {
+}
+
+.archive-post+.collection-title {
+    margin-top: 30px;
+}
+
+.archive-title {
+
+    &.tag,
+    &.category {
+    margin: 15px 0;
+    }
+
+    .archive-name {
+    margin: 0;
+    display: inline-block;
+    font-weight: 400;
+    }
+}
+
+.collection-title {
+
+    .archive-year {
+    margin: 18px 0;
+    }
+}
+
+.archive-post {
+    margin: 15px 0;
+
+    .archive-post-time {
+    float: left;
+    overflow: hidden;
+    color: #aaa;
+    line-height: 25px;
+    display: block;
+    }
+
+    .archive-post-title {
+        margin-left: 85px;
+        display: block;
+        .archive-post-link {
+        color: rgb(51, 51, 51);
+        }
+    }
+
+    &::first-child {
+    margin-top: 20px;
+    }
+
+    &:hover {
+
+    }
+
+    .readtime {
+        color: #999;
+        font-size: smaller;
+        margin-left: 10px;
+    }
+}
+

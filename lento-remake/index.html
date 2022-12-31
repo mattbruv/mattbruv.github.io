@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Remaking a dead Multiplayer Java Game - Lentokonepeli</title>
+<link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="/css/style.css"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="generator" content="Hexo 6.3.0"></head>
+    <body>
+        <div id="container">
+            <header>
+    <h2><a href="/./">Matt's Blog</a></h2>
+</header>
+            <article>
+    <div id="article-header">
+        <h1>Remaking a dead Multiplayer Java Game - Lentokonepeli</h1>
+        <h2>So close, yet so far from success.</h2>
+        <div class="published">
+            <span title="Published on 08/24/2020 9:49 AM">
+                August 24th, 2020
+                - 
+                13 min read
+            </span>
+        </div>
+        
+    </div>
+    <h2 id="Lentokonepeli"><a href="#Lentokonepeli" class="headerlink" title="Lentokonepeli"></a>Lentokonepeli</h2><p>When I was a teen I used to play on a gaming website called 
+<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Playforia">Playforia</a> around 2008.
+It was built on Java and had a sizeable community of players from around the world.
+They had many multiplayer games such as pool, cannons, minigolf, and many more.
+Since all of the games were custom made for the website,
+it created a wholesome feeling of community fun.</p>
+<p>One of my favorite games was a game called <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=qCCCUXUwlT8">Dogfight</a>, (Lentokonepeli in Finnish).
+It was a World-War-1 themed airplane combat game which pit the Central team vs. the Allies.
+The first team to destroy the other’s aircraft hangars was declared the winner.
+This innocuous looking game was easy to start playing, yet had a very high skill ceiling.
+But most of all, it was fun. Lots of fun.
+Clans formed over time and competed against each other.
+Some dedicated players had spent thousands of hours mastering the mechanics of the game
+in order to out-gun other players.
+I had played this pretty routinely back in the day.</p>
+<div class="image-row">
+
+<p><img src="/lento-remake/demo.png" alt="demo"></p>
+</div>
+
+<div class="subtitle">
+A screenshot from live gameplay of my remake.
+</div>
+
+
+<p>A few years ago in 2018, I randomly remembered this game, and thought I’d go check it out.
+To my surprise, there were no available rooms to join, and no active players at all. It was a ghost town.
+A large part of the decline in the website’s overall popularity was because it was built on Java.
+As major web browsers began to phase out Java, it slowly strangled the playerbase to death.
+Seeing the writing on the wall,
+I downloaded the <a target="_blank" rel="noopener" href="https://github.com/mattbruv/playray-dogfight-client">client-side JAR file</a>
+from the server to preserve what I could.
+Less than a few months later, the website admitted defeat and shut its doors permanently.</p>
+<p>With the death of the website, many fans and players lost access to their favorite games and community.
+Around 2019, I had the idea of trying to remake the game.
+It seemed simple enough, and I also liked the idea of a free, open source version
+that could be preserved and maintained forever, not being owned by a single company.
+I had the game’s original assets, images, sounds, and client-side code.
+Could that be enough?</p>
+<h2 id="Creating-a-Remake"><a href="#Creating-a-Remake" class="headerlink" title="Creating a Remake"></a>Creating a Remake</h2><p>I made <a target="_blank" rel="noopener" href="https://discord.gg/QjtXPmx">a Discord server</a> and got to work.
+The modern web is the perfect coding playground to host such a game nowadays.
+The rendering library PIXI.js seemed like a perfect fit for drawing the game.
+I envisioned a game built on Node.js so that game logic could be written once and
+shared between the server and the client.
+This turned out to be a huge advantage, because I could simulate a server on the client side,
+so that way a static website could run the game without needing to run on a server.
+This meant that any player testing the game could load an
+ordinary webpage and tweak game physics, and other settings,
+getting immediate feedback in order to fine-tune the physics.</p>
+<p><a target="_blank" rel="noopener" href="https://mattbruv.github.io/Lentokonepeli/">Here is a link</a>
+to the latest version of the remake, running inside a simulated local server on your web browser.
+You can jump right in and start flying planes, as well as tweak their physics values.
+As you can see, a lot of the game’s functionality and physics have been implemented, but it isn’t finished.
+(Press <code>D</code> to toggle a debug view)</p>
+<h2 id="Challenges-of-Remaking-a-Game"><a href="#Challenges-of-Remaking-a-Game" class="headerlink" title="Challenges of Remaking a Game"></a>Challenges of Remaking a Game</h2><p>As the sole developer, I had a lot on my plate, and
+I often feared I had bitten off more than I could chew.
+In order for the game to feel the same, I needed to simulate it
+as accurately as possible.
+This was made infinitely harder by the fact that the game wasn’t hosted live anymore for testing,
+and was only captured in old, sparse, low-quality youtube videos.
+Attempting to recreate the game put me up against a lot of interesting challenges,
+most of which I was able to overcome.</p>
+<p>Unfortunately, I wasn’t able to accurately reproduce the most fundamental part of the game:
+The flight physics.
+There was nothing in the client-side code to help me figure out how to implement them.
+I had a friend who is a physics graduate try to decipher the physics,
+and he got pretty close.
+After weeks of tampering with the physics, we simply couldn’t capture the right feeling.
+No matter how much we tweaked the physics, the loyal players who remembered the game just didn’t agree with how it felt,
+and we reached a stand-still.
+After spending hundreds of hours in total on this project, this is where I am choosing to leave it behind.
+What we ended up with feels like a Chinese knock-off of something great.</p>
+<p>Despite the sad ending, I learned a bunch of interesting things about game development
+since I built everything (minus the renderer) from scratch.
+I’d like to also use this blog post to
+detail one of the fun things I tackled while creating the remake:</p>
+<h2 id="Optimizing-Network-Traffic"><a href="#Optimizing-Network-Traffic" class="headerlink" title="Optimizing Network Traffic"></a>Optimizing Network Traffic</h2><p>Surprisingly, one of the most fun and rewarding challenges was designing and optimizing the
+amount of data that the game sends about these objects over the network.
+The game server and client communicate over WebSockets.
+The game logic runs at 60 Hz on the server,
+meaning that the game calculates physics, player movement, collisions, and everything else
+at 60 times per second.
+It also has to broadcast this information to every connected player in
+order to keep their game up to date and accurate.</p>
+<p>There are many objects in the game such as
+planes, pilots, bombs, bullets, airfields, the ground, and so on. They are all game objects which
+can interact with each another.
+Each game object has unique properties, and some can change every time the game updates.</p>
+<p>For example, let’s consider the properties of an example plane in our game in JSON form:</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><code class="hljs js">&#123;<br>    <span class="hljs-attr">x</span>: <span class="hljs-number">994</span>,<br>    <span class="hljs-attr">y</span>: <span class="hljs-number">174</span>,<br>    <span class="hljs-attr">planeType</span>: <span class="hljs-number">7</span>,<br>    <span class="hljs-attr">team</span>: <span class="hljs-number">0</span>,<br>    <span class="hljs-attr">direction</span>: <span class="hljs-number">145</span>,<br>    <span class="hljs-attr">health</span>: <span class="hljs-number">100</span>,<br>    <span class="hljs-attr">fuel</span>: <span class="hljs-number">226</span>,<br>    <span class="hljs-attr">ammo</span>: <span class="hljs-number">90</span>,<br>    <span class="hljs-attr">bombs</span>: <span class="hljs-number">0</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>As we can see, each plane has 9 properties.
+After using <code>JSON.stringify</code> on the above object, we get a 100 byte string.
+Now let’s pretend we have 20 players flying around in a game,
+and that on average, the payload is going to stay around this size.</p>
+<p>20 players * 100 bytes per update &#x3D; 2000 bytes per game tick &#x3D; 
+2000 * 60 ticks per second &#x3D; 120,000 bytes per second &#x3D; 7,200,000 bytes per minute &#x3D; 
+432,000,000 bytes per hour.
+432MB per hour is a lot of data being transferred for a simple 2D game with 20 players!
+To put that into perspective, Fortnite uses ~100MB per hour, and CS:GO uses ~250MB.</p>
+<p>We could cut the simulation down by half to 30 Hz and theoretically half our output, but then the accuracy of our game simulation suffers.
+There is a better way.
+It’s clear that sending the entire state of the game objects on every frame is incredibly wasteful.
+Imagine if a player is standing on the ground and not moving.
+Why would we keep sending the location of a player who is standing still over the network?</p>
+<p>The first optimization I made was to only send changes that have happened to the game objects
+since the last time they were processed.
+Now this makes it so that only properties that change rapidly every tick will update (such as X and Y positions),
+and things that change less frequently (fuel, bullets, bombs) will be sent out less frequently.
+Unchanging properties such as the team of a plane, or the type of a plane will only be sent out
+once when the object is created.</p>
+<p>Let’s start with a new scenario.
+A game tick has just been calculated between two players who are flying.
+Both of their plane’s X and Y coordinates have been updated, and one of the plane’s
+fuel has decreased.
+We want to send this information in a packet to the client:</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><code class="hljs js">&#123;<span class="hljs-attr">type</span>: <span class="hljs-number">7</span>, <span class="hljs-attr">data</span>: &#123;<span class="hljs-number">7</span>: &#123;<span class="hljs-number">4</span>: &#123;<span class="hljs-attr">type</span>: <span class="hljs-number">7</span>, <span class="hljs-attr">x</span>: <span class="hljs-number">994</span>, <span class="hljs-attr">y</span>: <span class="hljs-number">174</span>, <span class="hljs-attr">fuel</span>: <span class="hljs-number">226</span>&#125;, <span class="hljs-number">5</span>: &#123;<span class="hljs-attr">type</span>: <span class="hljs-number">7</span>, <span class="hljs-attr">x</span>: -<span class="hljs-number">1513</span>, <span class="hljs-attr">y</span>: <span class="hljs-number">238</span>&#125;&#125;&#125;&#125;<br></code></pre></td></tr></table></figure>
+
+<div class="subtitle">
+An example packet with changes to game objects.
+</div>
+
+<p>The highest level <code>type</code> is an enum that tells the client what type of packet is coming.
+<code>data</code> holds a nested object of game objects,
+and each game object holds objects which are indexed by their own unique ID’s.
+Each instance of a game object only has its own changes included.</p>
+<p>Our example above is a 100 byte string for two planes. It would have been 200 bytes if we used the “send everything”
+approach with two planes.
+With just a little effort we’ve already reduced the size by &gt;50%,
+and the savings would be significantly greater the more planes you add.</p>
+<p>Only sending a small JSON object with relevant changes to game objects already saves us
+quite a bit of data,
+but once again, we can do better.</p>
+<h3 id="Binary-Compression"><a href="#Binary-Compression" class="headerlink" title="Binary Compression"></a>Binary Compression</h3><p>since JSON is sent over the network as a string, it has a lot of overhead.
+Labels such as <code>&quot;fuel&quot;:</code>, and 
+characters such as <code>&quot;</code>, <code>:</code>, and <code>,</code> are all just fluff in order to keep the structure
+of the JSON object in tact.
+In fact, we wouldn’t even need to have these labels if we knew the order and size of the properties of 
+an object and sent them in a specific way every time.
+By creating our own custom binary protocol, we can cram a lot of information
+into a small stream of bytes.</p>
+<p>The compression algorithm is as follows:</p>
+<ol>
+<li>Always begin each packet with 1 byte to describe the type of data being sent so the client knows how to read it.</li>
+</ol>
+<p>For each game object (repeat):</p>
+<ol start="2">
+<li>Add one byte for type of object</li>
+<li>Follow that with a two byte unique ID for that object (allows 2^16 &#x3D; 65,536 unique IDs for each type)</li>
+<li>Use <code>n</code> number of bytes as a bitmask, where bits set to <code>1</code> are the properties that are being sent immediately proceeding this bitmask, in order.</li>
+</ol>
+<p>For each property set in the bitmask:</p>
+<ol start="5">
+<li>Write <code>n</code> bytes depending on how large the property is</li>
+</ol>
+<p>And repeat until the end.</p>
+<div class="image-row">
+
+<p><img src="/lento-remake/binary.png" alt="binary"></p>
+</div>
+
+<div class="subtitle">
+Example packet of my custom binary game object protocol.
+</div>
+
+<p>Applying that compression to the JSON data, we now have all of that information packed into
+this little binary update which is only 20 bytes (shown as a hexadecimal string here with spaces for ease of reading):</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><code class="hljs plaintext">07 07 00 04 43 00 03 E2 00 AE E2 07 00 05 03 00 FA 17 00 EE<br></code></pre></td></tr></table></figure>
+
+<p>~5x smaller than our previous optimization, and ~20x smaller than the “send the world” approach.</p>
+<h2 id="Final-Thoughts"><a href="#Final-Thoughts" class="headerlink" title="Final Thoughts"></a>Final Thoughts</h2><p>All and all, it was a fun project to work on,
+But it was mentally taxing having to write nearly everything from scratch.
+It was enjoyable to see the game start to have new life again.
+At one point, we even had the programmer of the original game join our server.
+He searched for the original sources to try and help us,
+but they were long gone and it seems like they will never be shared if they do still exist somewhere.
+I wish I were able to figure out how to fix the physics, but I can’t.
+It seems like this is where this project ends for now.
+If the original sources are found, or someone figures out the physics,
+I will complete the game, but that doesn’t seem likely.</p>
+
+</article>
+        </div>
+    </body>
+</html>

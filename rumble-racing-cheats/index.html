@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html>
-    <head><meta name="generator" content="Hexo 3.9.0">
+    <head>
         <title>I found 25 undiscovered cheats in Rumble Racing 20 years later</title>
-<link rel="stylesheet" type="text/css" href="/css/normalize.css">
-<link rel="stylesheet" type="text/css" href="/css/style.css">
+<link rel="stylesheet" type="text/css" href="/css/normalize.css"/>
+<link rel="stylesheet" type="text/css" href="/css/style.css"/>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-    </head>
+    <meta name="generator" content="Hexo 6.3.0"></head>
     <body>
         <div id="container">
             <header>
@@ -25,7 +25,7 @@
         </div>
         
     </div>
-    <h1 id="Rumble-Racing"><a href="#Rumble-Racing" class="headerlink" title="Rumble Racing"></a>Rumble Racing</h1><p><a href="https://gamefaqs.gamespot.com/ps2/459739-rumble-racing/faqs/32523" target="_blank" rel="noopener">Rumble Racing</a> is a racing video game developed by EA Redwood Shores for the PlayStation 2 and was released on April 23, 2001.
+    <h1 id="Rumble-Racing"><a href="#Rumble-Racing" class="headerlink" title="Rumble Racing"></a>Rumble Racing</h1><p><a target="_blank" rel="noopener" href="https://gamefaqs.gamespot.com/ps2/459739-rumble-racing/faqs/32523">Rumble Racing</a> is a racing video game developed by EA Redwood Shores for the PlayStation 2 and was released on April 23, 2001.
 It’s a fast-paced arcade style racing game with tons of cars ranging
 from muscle cars and hot rods to a jet-fueled car and an RV.
 The game features an exciting power-up system à la Mario Kart enabling the player to
@@ -71,13 +71,13 @@ total combinations.
 129 Trillion possible passwords… That’s a lot to try and guess.</p>
 <p>Realistically, there are only a few ways that these passwords would ever be discovered:
 The game reveals passwords after progression (as Rumble Racing does),
-developers reveal passwords to game journalists/other sources,
+developers reveal passwords to game journalists&#x2F;other sources,
 or a player happens to guess a password with an astronomically stupid amount of luck.</p>
 <p>The fourth, and far more interesting option, is reverse engineering the game
 and figuring out its hidden secrets for ourselves.</p>
 <h1 id="Rumble-Racing-in-Reverse"><a href="#Rumble-Racing-in-Reverse" class="headerlink" title="Rumble Racing in Reverse"></a>Rumble Racing in Reverse</h1><p>Since the game was released in an early era of the internet,
 things like passwords generally circulated as word of mouth
-and were often procured in bits and pieces on websites like GameSpot/GameFAQs.
+and were often procured in bits and pieces on websites like GameSpot&#x2F;GameFAQs.
 As a result, if you wanted to get an entire list of passwords or cheats for a game,
 you often had to collect all of that information yourself from different sources.</p>
 <p>When coming back to play this game for nostalgia purposes
@@ -85,7 +85,7 @@ I naturally wondered if Rumble Racing had any hidden secrets that have
 yet to be discovered beyond the passwords that were presented to the players.</p>
 <h2 id="Understanding-the-files"><a href="#Understanding-the-files" class="headerlink" title="Understanding the files"></a>Understanding the files</h2><div class="image-row">
 
-<p><img src="files.png" alt></p>
+<p><img src="/rumble-racing-cheats/files.png"></p>
 </div>
 
 <p>After extracting the contents of the Rumble Racing .ISO file,
@@ -105,7 +105,7 @@ The game engine likely parses these files at runtime,
 decompresses the data, and pulls it all into memory as needed.</p>
 <div class="image-row">
 
-<p><img src="fileexample.png" alt></p>
+<p><img src="/rumble-racing-cheats/fileexample.png"></p>
 </div>
 
 <div class="subtitle">
@@ -120,10 +120,10 @@ in the actual game executable.
 It is an ELF file found in the root folder named <code>PBPX_952.01</code>.
 This turned out to give a lot of information.
 There are tons of strings: The names of the cars,
-menu/user interface messages, error messages, even the compiler used! <code>MW MIPS C Compiler (2.4.1.01)</code>.</p>
+menu&#x2F;user interface messages, error messages, even the compiler used! <code>MW MIPS C Compiler (2.4.1.01)</code>.</p>
 <div class="image-row">
 
-<p><img src="elfstrings.png" alt></p>
+<p><img src="/rumble-racing-cheats/elfstrings.png"></p>
 </div>
 
 <div class="subtitle">
@@ -138,7 +138,7 @@ otherwise they would have shown up in the game’s exectuable file.
 This led me to believe that they were packed into the game’s internal filesystem
 somewhere. They are buried somewhere in the compressed data and pulled out at runtime.</p>
 <p>This means that I won’t get anywhere until I find a way to extract all of that information from the game’s files.
-I decided to take a lazy approach to finding the decompressed information and let the PlayStation 2 emulator <a href="https://pcsx2.net/" target="_blank" rel="noopener">PCSX2</a> do all of that hard work for me.</p>
+I decided to take a lazy approach to finding the decompressed information and let the PlayStation 2 emulator <a target="_blank" rel="noopener" href="https://pcsx2.net/">PCSX2</a> do all of that hard work for me.</p>
 <p>I booted up the game and navigated to the password entry screen and made a save state at that point.
 This is the equivelent of being able to pause time while playing the game and inspecting the PS2’s
 32 megabytes of RAM at that exact moment.
@@ -147,39 +147,23 @@ can be extracted and looked at.</p>
 <p>I searched for a password that I already knew, and voilà! It appears to be every password in the game!</p>
 <div class="image-row">
 
-<p><img src="passwords.png" alt></p>
+<p><img src="/rumble-racing-cheats/passwords.png"></p>
 </div>
 
 <p>This entire chunk of memory that the passwords happen to be in has a few curious properties.
-It looks like it’s some kind of key/value map of strings, where the key is some kind of numerical index:</p>
-<pre><code class="hljs js">&#123;
-<span class="hljs-comment">// ...</span>
-<span class="hljs-string">"2416"</span>: <span class="hljs-string">"Save Found"</span>,
-<span class="hljs-string">"2417"</span>: <span class="hljs-string">"Save Not Found"</span>,
-<span class="hljs-string">"2418"</span>: <span class="hljs-string">"Save Aborted"</span>,
-<span class="hljs-string">"2419"</span>: <span class="hljs-string">"Load Aborted"</span>,
-<span class="hljs-string">"2420"</span>: <span class="hljs-string">"Insufficient Free Space"</span>,
-<span class="hljs-string">"2421"</span>: <span class="hljs-string">"Idle"</span>,
-<span class="hljs-string">"2500"</span>: <span class="hljs-string">"Press * with controller in"</span>,
-<span class="hljs-string">"2501"</span>: <span class="hljs-string">"controller port 2 to configure."</span>,
-<span class="hljs-string">"2502"</span>: <span class="hljs-string">"Would you like vibration turned on?"</span>,
-<span class="hljs-comment">// ...</span>
-&#125;</code></pre>
+It looks like it’s some kind of key&#x2F;value map of strings, where the key is some kind of numerical index:</p>
+<figure class="highlight js"><table><tr><td class="code"><pre><code class="hljs js">&#123;<br><span class="hljs-comment">// ...</span><br><span class="hljs-string">&quot;2416&quot;</span>: <span class="hljs-string">&quot;Save Found&quot;</span>,<br><span class="hljs-string">&quot;2417&quot;</span>: <span class="hljs-string">&quot;Save Not Found&quot;</span>,<br><span class="hljs-string">&quot;2418&quot;</span>: <span class="hljs-string">&quot;Save Aborted&quot;</span>,<br><span class="hljs-string">&quot;2419&quot;</span>: <span class="hljs-string">&quot;Load Aborted&quot;</span>,<br><span class="hljs-string">&quot;2420&quot;</span>: <span class="hljs-string">&quot;Insufficient Free Space&quot;</span>,<br><span class="hljs-string">&quot;2421&quot;</span>: <span class="hljs-string">&quot;Idle&quot;</span>,<br><span class="hljs-string">&quot;2500&quot;</span>: <span class="hljs-string">&quot;Press * with controller in&quot;</span>,<br><span class="hljs-string">&quot;2501&quot;</span>: <span class="hljs-string">&quot;controller port 2 to configure.&quot;</span>,<br><span class="hljs-string">&quot;2502&quot;</span>: <span class="hljs-string">&quot;Would you like vibration turned on?&quot;</span>,<br><span class="hljs-comment">// ...</span><br>&#125;<br></code></pre></td></tr></table></figure>
 
 <p>What is the purpose of this design?
 It’s hard to say without having any knowledge of how the game engine works.
 Perhaps the game stores all of its dynamically loaded assets in a similar way.
 I could easily envision a system where each type of dynamically loaded game object (including strings apparently)
 are stored in a key-value map of that type like this:</p>
-<pre><code class="hljs cpp"><span class="hljs-comment">// C++</span>
-<span class="hljs-built_in">std</span>::<span class="hljs-built_in">map</span>&lt;<span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>, <span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>&gt; mapOfStrings;
-
-mapOfStrings[<span class="hljs-string">"2416"</span>] = <span class="hljs-string">"Save Found"</span>; <span class="hljs-comment">// but set dynamically during asset loading routine</span>
-<span class="hljs-comment">// and so on...</span></code></pre>
+<figure class="highlight cpp"><table><tr><td class="code"><pre><code class="hljs cpp"><span class="hljs-comment">// C++</span><br>std::map&lt;std::string, std::string&gt; mapOfStrings;<br><br>mapOfStrings[<span class="hljs-string">&quot;2416&quot;</span>] = <span class="hljs-string">&quot;Save Found&quot;</span>; <span class="hljs-comment">// but set dynamically during asset loading routine</span><br><span class="hljs-comment">// and so on...</span><br></code></pre></td></tr></table></figure>
 
 <p>It’s really interesting to speculate about how the game engine works, but let’s get back to our passwords.</p>
 <h2 id="Show-me-the-passwords"><a href="#Show-me-the-passwords" class="headerlink" title="Show me the passwords!"></a>Show me the passwords!</h2><p>After processing the data, I found 52 nine digit passwords in total.
-I created a <a href="https://docs.google.com/spreadsheets/d/1E4-xcl1Glh4Gj571sMKVjZM5uGPJ8ImhkY7CyUIxP28/edit?usp=sharing" target="_blank" rel="noopener">Google Sheets spreadsheet</a>
+I created a <a target="_blank" rel="noopener" href="https://docs.google.com/spreadsheets/d/1E4-xcl1Glh4Gj571sMKVjZM5uGPJ8ImhkY7CyUIxP28/edit?usp=sharing">Google Sheets spreadsheet</a>
 to document each password I had discovered and compare them
 to passwords that people have already found a long time ago.</p>
 <p>What I discovered was that 25 of these passwords were completely unique and unknown before
@@ -188,15 +172,15 @@ Doing a Google search for the literal passwords provided zero references, <em>an
 These were brand new passwords that I had stumbled across.
 A pretty cool feeling!</p>
 <p>My next task was to figure out what each new password did.
-It appears that all of the passwords are <a href="https://en.wikipedia.org/wiki/Anagram" target="_blank" rel="noopener">anagrams</a>
+It appears that all of the passwords are <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Anagram">anagrams</a>
 of the thing that they unlock.
 For example, the new password <code>EAMLSTMOR</code> is an anagram of <code>MAELSTROM</code>, which unlocks the Maelstrom car in the game.</p>
-<p>I realized that 22/25 of these passwords were simply passwords that unlocked individual cars.
+<p>I realized that 22&#x2F;25 of these passwords were simply passwords that unlocked individual cars.
 Interestingly, 11 of these passwords unlock cars which are <strong>already unlocked by default</strong>,
 which makes these passwords effectively useless.
-You can still put them in and it will play a successful password sound/prompt.</p>
+You can still put them in and it will play a successful password sound&#x2F;prompt.</p>
 <p>The fact that there is a cheat to unlock every car makes me believe
-that the developers probably didn’t decide which cars would be locked/unlocked
+that the developers probably didn’t decide which cars would be locked&#x2F;unlocked
 by default until very late in the development process.</p>
 <h2 id="Important-New-Passwords"><a href="#Important-New-Passwords" class="headerlink" title="Important New Passwords"></a>Important New Passwords</h2><p>The remaining three passwords are as follows: <code>APMSSWDRO</code>, <code>DTLEFATLU</code>, and <code>2ATEXT2AR</code>.</p>
 <p><code>APMSSWDRO</code> seemed to unlock everything in the game in one simple password! With an anagram of <code>MPASSWORD</code>, it probably stands for “Master Password”.
