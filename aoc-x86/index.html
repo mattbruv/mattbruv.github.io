@@ -1,0 +1,389 @@
+<!DOCTYPE html><!--lLKmyGbgC9GZXyGPxKThQ--><html lang="en"><head><meta charSet="UTF-8"/><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="/_next/static/css/0f63a619df29c78b.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/css/5eacd01f773eed7f.css" data-precedence="next"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack-6b8b512d4121474e.js"/><script src="/_next/static/chunks/4bd1b696-c023c6e3521b1417.js" async=""></script><script src="/_next/static/chunks/255-a7ba4d37dca2f1fa.js" async=""></script><script src="/_next/static/chunks/main-app-bdb7cdcf0fbe007a.js" async=""></script><script src="/_next/static/chunks/619-ba102abea3e3d0e4.js" async=""></script><script src="/_next/static/chunks/app/%5Bslug%5D/page-a8d66757df33bd31.js" async=""></script><title>Solving Advent of Code in 1 microsecond using handwritten x86 assembly - Matt&#x27;s Blog</title><meta name="description" content="It&#x27;s a luxury to be able to write x += y"/><script src="/_next/static/chunks/polyfills-42372ed130431b0a.js" noModule=""></script></head><body id="main" class="main px-5 pb-10 max-w-5xl m-auto"><div hidden=""><!--$--><!--/$--></div><div><div class="flex flex-wrap p-1 sm:p-3"><a class="mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-bold" href="/">Blog</a><a class="mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal" href="/projects/">Projects</a><a class="mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal" href="/travel/">Travel</a><a class="mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal" href="/about/">About Me</a><a class="mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all " target="_blank" href="https://docs.google.com/forms/d/e/1FAIpQLScM11T5L9SjhZ1c9A3OB7aWc6DuLYTzf9DStnFkalDKaKDpaA/viewform?usp=sharing&amp;ouid=112011499277324502181">Contact</a></div><div class="md:flex md:justify-center"><article class="prose md:prose-lg lg:prose-xl mt-16"><h1 class="mb-0">Solving Advent of Code in 1 microsecond using handwritten x86 assembly</h1><div class="italic text-gray-500">It&#x27;s a luxury to be able to write x += y</div><div class="text-gray-400">December 31, 2022</div><div class="mt-6"><h2>Advent of Code</h2>
+<p><a href="https://adventofcode.com/" target="_blank" class="underline">Advent of Code</a> (AOC) is an Advent calendar of small programming puzzles.
+Starting on December 1st, a new programming puzzle is unlocked every day until Christmas.
+Each day&#x27;s puzzle has two parts.
+The difficulty of the puzzles increases as the days progress.
+Lots of people complete AOC puzzles for many reasons.
+Some enjoy the thrill of competing for the top leaderboard spot right as the puzzle unlocks at midnight.
+Most people (myself included) use the puzzles as a way to practice a new programming language.</p>
+<p>The first few days are typically quite trivial
+which gives people a lot of creative liberty in how they choose to solve it.
+Many people <a href="https://en.wikipedia.org/wiki/Code_golf" target="_blank" class="underline">code golf</a>, use esoteric languages (like the <a href="https://en.wikipedia.org/wiki/Shakespeare_Programming_Language" target="_blank" class="underline">Shakespeare Programming Language</a>, or even Microsoft Excel!), or find some bizarre but entertaining way to challenge themselves to solve the problem.</p>
+<p>This year I decided to learn the basics of x86 assembly and solve the first problem at the lowest level possible, resulting in all kinds of headaches and ultimately a solution which was too fast to even benchmark.
+Join me on a journey into the ancient and dangerous world of assembly language.</p>
+<h2>Day 1: The Problem</h2>
+<p>The <a href="https://adventofcode.com/2022/day/1" target="_blank" class="underline">day 1 puzzle</a> requires you to count the calories being carried by the elves as they begin their expedition into the jungle.
+Each line in the puzzle input represents calories from a meal.
+Each group of calories represents an elf&#x27;s total meals.
+Elves are separated by a blank line.
+In the example input below, the first elf is carrying 6,000 calories,
+the second 4,000, and so on:</p>
+<pre><code class="hljs language-properties"><span class="hljs-attr">1000</span>
+<span class="hljs-attr">2000</span>
+<span class="hljs-attr">3000</span>
+
+<span class="hljs-attr">4000</span>
+
+<span class="hljs-attr">5000</span>
+<span class="hljs-attr">6000</span>
+
+<span class="hljs-attr">7000</span>
+<span class="hljs-attr">8000</span>
+<span class="hljs-attr">9000</span>
+
+<span class="hljs-attr">10000</span>
+</code></pre>
+<p>In order to solve Part 1, you must find the elf carrying the most calories, and find the number of total calories he has.</p>
+<p>The problem is simple, and the solution is straightforward.
+We need to loop over every group of elves, sum their calories,
+and keep track of the largest sum, overwriting it when we find a bigger number.</p>
+<h3>Parsing the Input</h3>
+<p>Our first challenge in assembly is to parse our input.
+We are at the lowest level of programming that there is.
+Nothing is available to us.
+Unless you link your program with something like the C standard library,
+you&#x27;re completely on your own in every regard.
+In order to read a file you need to dive into system calls and write code for string parsing.
+I chose a different option however: format the input to work directly in our program.</p>
+<p>Our input is just a series of numbers separated by a newline.
+In fact, if you replace the newlines with <code>-1</code>,
+our input suddenly becomes a contiguous array of numbers.
+All you have to do is throw it in a data section, give it a label,
+and append <code>.long</code> in front of each number, and you&#x27;ve got yourself
+a bona fide array of signed integers immediately ready to be used:</p>
+<pre><code class="hljs language-x86asm"><span class="hljs-meta">.data</span>
+<span class="hljs-meta">.global</span> nums
+<span class="hljs-symbol">nums:</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">1000</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">2000</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">3000</span>
+<span class="hljs-meta">.long</span> -<span class="hljs-number">1</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">4000</span>
+<span class="hljs-meta">.long</span> -<span class="hljs-number">1</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">5000</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">6000</span>
+<span class="hljs-meta">.long</span> -<span class="hljs-number">1</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">7000</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">8000</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">9000</span>
+<span class="hljs-meta">.long</span> -<span class="hljs-number">1</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">10000</span>
+<span class="hljs-comment">; and so on...</span>
+</code></pre>
+<p>This can be linked directly into our program,
+and we don&#x27;t have to spend
+any time at all parsing a file.</p>
+<h3>Solving Part 1</h3>
+<p>The first real problem we run into is that it&#x27;s
+kind of difficult to even know what your assembly
+program is doing, or if it&#x27;s even working at all.</p>
+<p>Let&#x27;s write the most minimal program in assembly possible,
+and then we can set up a small
+C driver to call our function and print the result.
+When we build and link these two programs together, we have
+a system where we can write our solution in assembly,
+but also see the result of our code.</p>
+<pre><code class="hljs language-x86asm"><span class="hljs-meta">.text</span>
+<span class="hljs-meta">
+.global</span> part1
+<span class="hljs-symbol">part1:</span>
+    <span class="hljs-comment">; the return value is expected in the EAX register in x86 calling convention</span>
+    <span class="hljs-comment">; this is equal to &quot;return 42;&quot; in C</span>
+    movl <span class="hljs-number">$42</span>, %eax
+    <span class="hljs-keyword">ret</span>
+</code></pre>
+<pre><code class="hljs language-c"><span class="hljs-meta">#<span class="hljs-keyword">include</span> <span class="hljs-string">&quot;stdio.h&quot;</span></span>
+
+<span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span>;
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+
+  <span class="hljs-type">int</span> p1 = part1();
+  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p1);
+
+  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>After a lot of trial and error + painful debugging,
+I wrote enough code
+to complete the first part of the problem
+and be awarded with the first star:</p>
+<pre><code class="hljs language-x86asm"><span class="hljs-meta">.global</span> part1
+<span class="hljs-symbol">part1:</span>
+    movl <span class="hljs-number">$0</span>, %ebx <span class="hljs-comment">; highestSoFar</span>
+    movl <span class="hljs-number">$0</span>, %ecx <span class="hljs-comment">; counter</span>
+<span class="hljs-symbol">
+.ResetAndAdd:</span>
+    movl <span class="hljs-number">$0</span>, %edx <span class="hljs-comment">; accumulator</span>
+<span class="hljs-symbol">
+.AddNext:</span>
+    leaq nums(%rip), %rax <span class="hljs-comment">; get start address of our number array</span>
+    addq %rcx,  %rax <span class="hljs-comment">; add our current offset</span>
+    movl (%rax), %eax <span class="hljs-comment">; move the value of that address into eax</span>
+    addl <span class="hljs-number">$4</span>, %ecx <span class="hljs-comment">; add 4 (bytes) to our counter, effectively i++</span>
+
+    cmpl $-<span class="hljs-number">1</span>, %eax <span class="hljs-comment">; test to see if the number is a newline (-1)</span>
+    <span class="hljs-keyword">je</span> .NextElf <span class="hljs-comment">; if -1, run our code for the next elf.</span>
+
+    addl %eax, %edx <span class="hljs-comment">; otherwise, add the number to our accumulator</span>
+    <span class="hljs-keyword">jmp</span> .AddNext
+<span class="hljs-symbol">
+.NextElf:</span>
+    <span class="hljs-comment">; if we have looked through all the numbers, return</span>
+    cmpl <span class="hljs-number">$8948</span>, %ecx <span class="hljs-comment">; 8948 = len(nums) * 4 bytes per number</span>
+    <span class="hljs-keyword">jge</span> .Finish <span class="hljs-comment">; if we&#x27;ve looked at all the input, return</span>
+
+    <span class="hljs-comment">; check if new sum is &gt; ebx</span>
+    cmpl %ebx, %edx
+    <span class="hljs-keyword">jle</span> .ResetAndAdd
+
+    <span class="hljs-comment">; it is greater than</span>
+    movl %edx, %ebx <span class="hljs-comment">; move new value into highestSoFar</span>
+    <span class="hljs-keyword">jmp</span> .ResetAndAdd
+<span class="hljs-symbol">
+.Finish:</span>
+    movl %ebx, %eax <span class="hljs-comment">; return highestSoFar</span>
+    <span class="hljs-keyword">ret</span>
+</code></pre>
+<p>This assembly function written in C would look like this:</p>
+<pre><code class="hljs language-c"><span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> nums[];
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span> {
+  <span class="hljs-type">int</span> highestSoFar = <span class="hljs-number">0</span>;
+  <span class="hljs-type">int</span> accumulator = <span class="hljs-number">0</span>;
+
+  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">2237</span>; i++) {
+
+    <span class="hljs-type">int</span> number = nums[i];
+
+    <span class="hljs-keyword">if</span> (number == <span class="hljs-number">-1</span>) {
+      <span class="hljs-keyword">if</span> (accumulator &gt; highestSoFar) {
+        highestSoFar = accumulator;
+      }
+      accumulator = <span class="hljs-number">0</span>;
+      <span class="hljs-keyword">continue</span>;
+    }
+
+    accumulator += number;
+  }
+
+  <span class="hljs-keyword">return</span> highestSoFar;
+}
+</code></pre>
+<p>Even while writing this small assembly program,
+I shot myself in the foot several times.
+When you screw up in assembly, you have nobody to help you.
+There is no compiler or tooling to hold your hand.
+It is just you vs. pure logic, and the computer will do exactly
+what you tell it to do, even to a horrible fault.</p>
+<h4>Who? What? When? Where? Why?</h4>
+<p>There is also a surprising amount of context that you must learn if you&#x27;re new to assembly.
+Which registers are you able to use safely?
+You really only have four registers available to you:
+<code>eax</code>, <code>ebx</code>, <code>ecx</code>, and <code>edx</code>.
+These are the four general registers and how the programmer uses them defines
+their meaning.
+Before I realized that you can really only work with these, I tried
+using <code>esp</code> for example and my program would not work.
+Why? I was modifying the stack pointer unknowingly to use the register in my own calculations and that is a big no-no.
+Even though these registers are special (and should be off-limits), nothing is there to stop you from using them.
+Realizing that I only had four registers available felt very limiting.
+That&#x27;s when you realize you have to start using the stack or creating variables in data sections to start holding your calculations and move those values in and out of registers.</p>
+<p>This means that you have to juggle so much more <strong>context</strong> in your head about your program.
+If you have a variable that has some meaning, along with remembering <strong>what</strong> it is, you also have to remember <strong>where</strong> it is.
+This realization shows you just how much we take for granted in our high level languages.</p>
+<p>For example, in C we can define a variable, do other stuff, and then add to that variable later.
+We never have to care <em>where</em> that variable is in memory.
+Is it already in a register? Is it on the stack, or in a data section?
+Do I need to move it into a register before I can work with it?
+Which registers am I not using at this exact spot in my program?
+Who cares.
+We don&#x27;t have to mentally keep track of it,
+The compiler abstracts that away for us:</p>
+<pre><code class="hljs language-c"><span class="hljs-type">int</span> x = <span class="hljs-number">0</span>;
+
+<span class="hljs-comment">// ...</span>
+
+<span class="hljs-comment">// What a luxury! We don&#x27;t have to think about</span>
+<span class="hljs-comment">// where &#x27;x&#x27; is at all. We just use it.</span>
+x += <span class="hljs-number">40</span>;
+</code></pre>
+<p>In assembly, it is 100% up to you to determine how your program uses memory at every level, and where that memory is stored. Is it on the stack or in a register? Is that variable at offset <code>4</code> or <code>8</code> on the stack again? I can&#x27;t remember.
+Now imagine that you have loaded a variable from an incorrect memory address.
+You&#x27;ve just broken your program in a non-obvious way,
+and the only way to realize it is through a painful amount of debugging.</p>
+<h4>One Missing Character to Ruin Your Day</h4>
+<p>While solving part 1, I made an assumption that bit me hard:
+I assumed the default jump instruction was <code>jp</code>. Spoiler alert: it isn&#x27;t.</p>
+<p>It took me tearing apart my whole program to realize my problem: My jump instruction isn&#x27;t working how I expected it to. This led me to find out that the jump instruction I wanted is actually <code>jmp</code>.
+<code>jp</code> was a real instruction, but it was short for <code>Jump short if parity</code>, only branching if the parity flag was set.
+One innocent missing <code>m</code> caused me a lot of headache.</p>
+<p>Control flow instructions are another thing that you just never have to care about in a high level language.
+The compiler will always create the correct one based on your code.</p>
+<h3>Solving Part 2</h3>
+<p>Typically, the second part of an AOC problem will ask for more, and expose faults in the speed of your code or the flexibility of your implementation.
+The second part for Day 1 was no exception:</p>
+<blockquote>
+<p>Find the top three Elves carrying the most Calories. How many Calories are those Elves carrying in total?</p>
+</blockquote>
+<p>And boy, assembly language is the least flexible language out there.
+Fortunately it wasn&#x27;t too bad to adapt the program
+to handle the top three elves instead of one.</p>
+<p>Instead of re-calculating everything in another function,
+I add a data section to hold the results,
+and then calculate the top three elves in part 1 while only returning the top one.
+In part two I then take the top three from the calculations and return their sum.</p>
+<pre><code class="hljs language-x86asm"><span class="hljs-meta">.data</span>
+<span class="hljs-symbol">ans:</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">0</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">0</span>
+<span class="hljs-meta">.long</span> <span class="hljs-number">0</span>
+<span class="hljs-meta">
+.text</span>
+<span class="hljs-meta">
+.global</span> part1
+<span class="hljs-symbol">part1:</span>
+    movl <span class="hljs-number">$0</span>, %ebx <span class="hljs-comment">; highestSoFar</span>
+    movl <span class="hljs-number">$0</span>, %ecx <span class="hljs-comment">; counter</span>
+<span class="hljs-symbol">
+.ResetAndAdd:</span>
+    movl <span class="hljs-number">$0</span>, %edx <span class="hljs-comment">; accumulator</span>
+<span class="hljs-symbol">
+.AddNext:</span>
+    leaq nums(%rip), %rax
+    addq %rcx,  %rax
+    movl (%rax), %eax
+    addl <span class="hljs-number">$4</span>, %ecx
+
+    cmpl $-<span class="hljs-number">1</span>, %eax
+    <span class="hljs-keyword">je</span> .NextElf
+
+    addl %eax, %edx
+    <span class="hljs-keyword">jmp</span> .AddNext
+<span class="hljs-symbol">
+.NextElf:</span>
+    <span class="hljs-comment">; iif we have looked through all the numbers, return</span>
+    cmpl <span class="hljs-number">$8948</span>, %ecx
+    <span class="hljs-keyword">jge</span> .Finish
+
+    <span class="hljs-comment">; check if new sum is &gt; ans[0] through ans[2]</span>
+    movl ans(%rip), %ebx
+    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[0] to accumulator</span>
+    <span class="hljs-keyword">jle</span> .Ans1
+    movl %edx, ans(%rip)
+    <span class="hljs-keyword">jmp</span> .ResetAndAdd
+<span class="hljs-symbol">    .Ans1:</span>
+    movl <span class="hljs-number">4</span>+ans(%rip), %ebx
+    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[1] to accumulator</span>
+    <span class="hljs-keyword">jle</span> .Ans2
+    movl %edx, <span class="hljs-number">4</span>+ans(%rip)
+    <span class="hljs-keyword">jmp</span> .ResetAndAdd
+<span class="hljs-symbol">    .Ans2:</span>
+    movl <span class="hljs-number">8</span>+ans(%rip), %ebx
+    cmpl %ebx, %edx <span class="hljs-comment">; compare ans[2] to accumulator</span>
+    <span class="hljs-keyword">jle</span> .ResetAndAdd
+    movl %edx, <span class="hljs-number">8</span>+ans(%rip)
+    <span class="hljs-keyword">jmp</span> .ResetAndAdd
+<span class="hljs-symbol">
+
+.Finish:</span>
+    movl ans(%rip), %eax
+    <span class="hljs-keyword">ret</span>
+<span class="hljs-meta">
+.global</span> part2
+<span class="hljs-symbol">part2:</span>
+    movl <span class="hljs-number">$0</span>, %eax
+    addl ans(%rip), %eax
+    addl <span class="hljs-number">4</span>+ans(%rip), %eax
+    addl <span class="hljs-number">8</span>+ans(%rip), %eax
+    <span class="hljs-keyword">ret</span>
+</code></pre>
+<p>This approach in assembly when literally translated to C would look like this:</p>
+<pre><code class="hljs language-c"><span class="hljs-keyword">extern</span> <span class="hljs-type">int</span> nums[];
+
+<span class="hljs-type">int</span> ans[<span class="hljs-number">3</span>] = {<span class="hljs-number">0</span>, <span class="hljs-number">0</span>, <span class="hljs-number">0</span>};
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">part1</span><span class="hljs-params">()</span> {
+  <span class="hljs-type">int</span> accumulator = <span class="hljs-number">0</span>;
+
+  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">2237</span>; i++) {
+
+    <span class="hljs-type">int</span> number = nums[i];
+
+    <span class="hljs-keyword">if</span> (number == <span class="hljs-number">-1</span>) {
+      <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">0</span>]) {
+        ans[<span class="hljs-number">0</span>] = accumulator;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">1</span>]) {
+        ans[<span class="hljs-number">1</span>] = accumulator;
+      } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (accumulator &gt; ans[<span class="hljs-number">2</span>]) {
+        ans[<span class="hljs-number">2</span>] = accumulator;
+      }
+      accumulator = <span class="hljs-number">0</span>;
+      <span class="hljs-keyword">continue</span>;
+    }
+
+    accumulator += number;
+  }
+
+  <span class="hljs-keyword">return</span> ans[<span class="hljs-number">0</span>];
+}
+
+<span class="hljs-type">int</span> <span class="hljs-title function_">part2</span><span class="hljs-params">()</span> {
+  <span class="hljs-keyword">return</span> ans[<span class="hljs-number">0</span>] + ans[<span class="hljs-number">1</span>] + ans[<span class="hljs-number">2</span>];
+}
+</code></pre>
+<p>And while this C code is somewhat ugly, it accurately
+demonstrates the logic of how the assembly code I wrote works.
+I was quite happy to be able to solve both parts in x86.</p>
+<p>Naturally I wanted to know how long it took to calculate
+the answer.
+After trying to time <code>part1()</code> with C&#x27;s <code>clock</code>,
+it was completing so fast that <code>clock</code> returned the same
+number both before and after calling <code>part1()</code>.</p>
+<p>I read about methods to get around this, and one
+suggested running the function in a loop <code>n</code> number of times
+and then dividing the time spent by <code>n</code>:</p>
+<pre><code class="hljs language-c"><span class="hljs-type">int</span> <span class="hljs-title function_">main</span><span class="hljs-params">()</span> {
+
+  <span class="hljs-type">clock_t</span> start, end;
+  <span class="hljs-type">double</span> cpu_time_used;
+  <span class="hljs-type">int</span> p1 = <span class="hljs-number">0</span>;
+
+  start = clock();
+  <span class="hljs-keyword">for</span> (<span class="hljs-type">int</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">1000000</span>; i++) {
+    p1 = part1();
+  }
+  end = clock();
+  cpu_time_used = ((<span class="hljs-type">double</span>)(end - start)) / CLOCKS_PER_SEC / <span class="hljs-number">1000000</span>;
+
+  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p1);
+
+  <span class="hljs-type">int</span> p2 = part2();
+  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;%d\n&quot;</span>, p2);
+  <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;Done in %.50f seconds\n&quot;</span>, cpu_time_used);
+
+  <span class="hljs-keyword">return</span> <span class="hljs-number">0</span>;
+}
+</code></pre>
+<p>Which outputs:
+<code>Done in 0.000001135999 seconds</code>
+on my average 2.8Ghz Intel i7 laptop.</p>
+<p>It&#x27;s not clear to me how much time is added
+by the time it takes to loop and call the function,
+but even with that added overhead it seems to be completing in
+an average of 1 microsecond.
+That&#x27;s pretty fast.
+An example Rust program that someone else wrote for part 1
+was able to solve it in 27 microseconds, but that included
+parsing the input, whereas my version has no input parsing.</p>
+<h2>Takeaways</h2>
+<p>Programming in assembly language
+gives me a new-found respect for how much high-level languages give us by abstracting away all the tedium and potential room for error.
+Low level languages such as C or C++ have a bad reputation for allowing people to shoot themselves in the foot,
+but the room for error in assembly feels exponentially greater.
+High level languages protect us from a huge amount of potential problems that most of us probably didn&#x27;t realize existed in the first place.
+This isn&#x27;t even taking into consideration garbage collection
+and other niceties even higher-level languages offer.</p>
+<p>Writing in C again after writing in x86 feels like going from crawling
+on the ground through broken glass
+to riding a bike down the road with a nice breeze on a summer day.</p></div></article></div></div><!--$--><!--/$--><script src="/_next/static/chunks/webpack-6b8b512d4121474e.js" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"1:\"$Sreact.fragment\"\n2:I[9766,[],\"\"]\n3:I[8924,[],\"\"]\n5:I[4431,[],\"OutletBoundary\"]\n7:I[5278,[],\"AsyncMetadataOutlet\"]\n9:I[4431,[],\"ViewportBoundary\"]\nb:I[4431,[],\"MetadataBoundary\"]\nc:\"$Sreact.suspense\"\ne:I[7150,[],\"\"]\n:HL[\"/_next/static/css/0f63a619df29c78b.css\",\"style\"]\n:HL[\"/_next/static/css/5eacd01f773eed7f.css\",\"style\"]\n"])</script><script>self.__next_f.push([1,"0:{\"P\":null,\"b\":\"lLKmyGbgC9GZXyGPxKThQ\",\"p\":\"\",\"c\":[\"\",\"aoc-x86\",\"\"],\"i\":false,\"f\":[[[\"\",{\"children\":[[\"slug\",\"aoc-x86\",\"d\"],{\"children\":[\"__PAGE__\",{}]}]},\"$undefined\",\"$undefined\",true],[\"\",[\"$\",\"$1\",\"c\",{\"children\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/0f63a619df29c78b.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"$undefined\"}]],[\"$\",\"html\",null,{\"lang\":\"en\",\"children\":[[\"$\",\"head\",null,{\"children\":[[\"$\",\"meta\",null,{\"charSet\":\"UTF-8\"}],[\"$\",\"meta\",null,{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1.0\"}]]}],[\"$\",\"body\",null,{\"id\":\"main\",\"className\":\"main px-5 pb-10 max-w-5xl m-auto\",\"children\":[\"$\",\"$L2\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L3\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"}],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}}],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":404}],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"}]}]]}]}]],[]],\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]}]]}]]}],{\"children\":[[\"slug\",\"aoc-x86\",\"d\"],[\"$\",\"$1\",\"c\",{\"children\":[null,[\"$\",\"$L2\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L3\",null,{}],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\"}]]}],{\"children\":[\"__PAGE__\",[\"$\",\"$1\",\"c\",{\"children\":[\"$L4\",[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/5eacd01f773eed7f.css\",\"precedence\":\"next\",\"crossOrigin\":\"$undefined\",\"nonce\":\"$undefined\"}]],[\"$\",\"$L5\",null,{\"children\":[\"$L6\",[\"$\",\"$L7\",null,{\"promise\":\"$@8\"}]]}]]}],{},null,false]},null,false]},null,false],[\"$\",\"$1\",\"h\",{\"children\":[null,[[\"$\",\"$L9\",null,{\"children\":\"$La\"}],null],[\"$\",\"$Lb\",null,{\"children\":[\"$\",\"div\",null,{\"hidden\":true,\"children\":[\"$\",\"$c\",null,{\"fallback\":null,\"children\":\"$Ld\"}]}]}]]}],false]],\"m\":\"$undefined\",\"G\":[\"$e\",[]],\"s\":false,\"S\":true}\n"])</script><script>self.__next_f.push([1,"a:[[\"$\",\"meta\",\"0\",{\"charSet\":\"utf-8\"}],[\"$\",\"meta\",\"1\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"}]]\n6:null\n"])</script><script>self.__next_f.push([1,"f:I[2619,[\"619\",\"static/chunks/619-ba102abea3e3d0e4.js\",\"182\",\"static/chunks/app/%5Bslug%5D/page-a8d66757df33bd31.js\"],\"\"]\n"])</script><script>self.__next_f.push([1,"4:[\"$\",\"div\",null,{\"children\":[[\"$\",\"div\",null,{\"className\":\"flex flex-wrap p-1 sm:p-3\",\"children\":[[[\"$\",\"$Lf\",\"0\",{\"className\":\"mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-bold\",\"href\":\"/\",\"children\":\"Blog\"}],[\"$\",\"$Lf\",\"1\",{\"className\":\"mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal\",\"href\":\"/projects\",\"children\":\"Projects\"}],[\"$\",\"$Lf\",\"2\",{\"className\":\"mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal\",\"href\":\"/travel\",\"children\":\"Travel\"}],[\"$\",\"$Lf\",\"3\",{\"className\":\"mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all font-normal\",\"href\":\"/about\",\"children\":\"About Me\"}]],[\"$\",\"$Lf\",\"contact\",{\"className\":\"mx-3 p-1 sm:px-3 sm:py-2 rounded-lg hover:bg-gray-200 transition-all \",\"target\":\"_blank\",\"href\":\"https://docs.google.com/forms/d/e/1FAIpQLScM11T5L9SjhZ1c9A3OB7aWc6DuLYTzf9DStnFkalDKaKDpaA/viewform?usp=sharing\u0026ouid=112011499277324502181\",\"children\":\"Contact\"}]]}],[\"$\",\"div\",null,{\"className\":\"md:flex md:justify-center\",\"children\":[\"$\",\"article\",null,{\"className\":\"prose md:prose-lg lg:prose-xl mt-16\",\"children\":[[\"$\",\"h1\",null,{\"className\":\"mb-0\",\"children\":\"Solving Advent of Code in 1 microsecond using handwritten x86 assembly\"}],[\"$\",\"div\",null,{\"className\":\"italic text-gray-500\",\"children\":\"It's a luxury to be able to write x += y\"}],[\"$\",\"div\",null,{\"className\":\"text-gray-400\",\"children\":\"December 31, 2022\"}],[\"$\",\"div\",null,{\"className\":\"mt-6\",\"children\":[[\"$\",\"h2\",null,{\"children\":\"Advent of Code\"}],\"\\n\",[\"$\",\"p\",null,{\"children\":[[\"$\",\"a\",null,{\"href\":\"https://adventofcode.com/\",\"target\":\"_blank\",\"className\":\"underline\",\"children\":\"Advent of Code\"}],\" (AOC) is an Advent calendar of small programming puzzles.\\nStarting on December 1st, a new programming puzzle is unlocked every day until Christmas.\\nEach day's puzzle has two parts.\\nThe difficulty of the puzzles increases as the days progress.\\nLots of people complete AOC puzzles for many reasons.\\nSome enjoy the thrill of competing for the top leaderboard spot right as the puzzle unlocks at midnight.\\nMost people (myself included) use the puzzles as a way to practice a new programming language.\"]}],\"\\n\",[\"$\",\"p\",null,{\"children\":[\"The first few days are typically quite trivial\\nwhich gives people a lot of creative liberty in how they choose to solve it.\\nMany people \",[\"$\",\"a\",null,{\"href\":\"https://en.wikipedia.org/wiki/Code_golf\",\"target\":\"_blank\",\"className\":\"underline\",\"children\":\"code golf\"}],\", use esoteric languages (like the \",[\"$\",\"a\",null,{\"href\":\"https://en.wikipedia.org/wiki/Shakespeare_Programming_Language\",\"target\":\"_blank\",\"className\":\"underline\",\"children\":\"Shakespeare Programming Language\"}],\", or even Microsoft Excel!), or find some bizarre but entertaining way to challenge themselves to solve the problem.\"]}],\"\\n\",[\"$\",\"p\",null,{\"children\":\"This year I decided to learn the basics of x86 assembly and solve the first problem at the lowest level possible, resulting in all kinds of headaches and ultimately a solution which was too fast to even benchmark.\\nJoin me on a journey into the ancient and dangerous world of assembly language.\"}],\"\\n\",[\"$\",\"h2\",null,{\"children\":\"Day 1: The Problem\"}],\"\\n\",[\"$\",\"p\",null,{\"children\":[\"The \",[\"$\",\"a\",null,{\"href\":\"https://adventofcode.com/2022/day/1\",\"target\":\"_blank\",\"className\":\"underline\",\"children\":\"day 1 puzzle\"}],\" requires you to count the calories being carried by the elves as they begin their expedition into the jungle.\\nEach line in the puzzle input represents calories from a meal.\\nEach group of calories represents an elf's total meals.\\nElves are separated by a blank line.\\nIn the example input below, the first elf is carrying 6,000 calories,\\nthe second 4,000, and so on:\"]}],\"\\n\",[\"$\",\"pre\",null,{\"children\":\"$L10\"}],\"\\n\",\"$L11\",\"\\n\",\"$L12\",\"\\n\",\"$L13\",\"\\n\",\"$L14\",\"\\n\",\"$L15\",\"\\n\",\"$L16\",\"\\n\",\"$L17\",\"\\n\",\"$L18\",\"\\n\",\"$L19\",\"\\n\",\"$L1a\",\"\\n\",\"$L1b\",\"\\n\",\"$L1c\",\"\\n\",\"$L1d\",\"\\n\",\"$L1e\",\"\\n\",\"$L1f\",\"\\n\",\"$L20\",\"\\n\",\"$L21\",\"\\n\",\"$L22\",\"\\n\",\"$L23\",\"\\n\",\"$L24\",\"\\n\",\"$L25\",\"\\n\",\"$L26\",\"\\n\",\"$L27\",\"\\n\",\"$L28\",\"\\n\",\"$L29\",\"\\n\",\"$L2a\",\"\\n\",\"$L2b\",\"\\n\",\"$L2c\",\"\\n\",\"$L2d\",\"\\n\",\"$L2e\",\"\\n\",\"$L2f\",\"\\n\",\"$L30\",\"\\n\",\"$L31\",\"\\n\",\"$L32\",\"\\n\",\"$L33\",\"\\n\",\"$L34\",\"\\n\",\"$L35\",\"\\n\",\"$L36\",\"\\n\",\"$L37\",\"\\n\",\"$L38\",\"\\n\",\"$L39\",\"\\n\",\"$L3a\",\"\\n\",\"$L3b\",\"\\n\",\"$L3c\"]}]]}]}]]}]\n"])</script><script>self.__next_f.push([1,"8:{\"metadata\":[[\"$\",\"title\",\"0\",{\"children\":\"Solving Advent of Code in 1 microsecond using handwritten x86 assembly - Matt's Blog\"}],[\"$\",\"meta\",\"1\",{\"name\":\"description\",\"content\":\"It's a luxury to be able to write x += y\"}]],\"error\":null,\"digest\":\"$undefined\"}\nd:\"$8:metadata\"\n"])</script><script>self.__next_f.push([1,"10:[\"$\",\"code\",null,{\"className\":\"hljs language-properties\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"1000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"2000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"3000\"}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"4000\"}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"5000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"6000\"}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"7000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"8000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"9000\"}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-attr\",\"children\":\"10000\"}],\"\\n\"]}]\n"])</script><script>self.__next_f.push([1,"11:[\"$\",\"p\",null,{\"children\":\"In order to solve Part 1, you must find the elf carrying the most calories, and find the number of total calories he has.\"}]\n12:[\"$\",\"p\",null,{\"children\":\"The problem is simple, and the solution is straightforward.\\nWe need to loop over every group of elves, sum their calories,\\nand keep track of the largest sum, overwriting it when we find a bigger number.\"}]\n13:[\"$\",\"h3\",null,{\"children\":\"Parsing the Input\"}]\n14:[\"$\",\"p\",null,{\"children\":\"Our first challenge in assembly is to parse our input.\\nWe are at the lowest level of programming that there is.\\nNothing is available to us.\\nUnless you link your program with something like the C standard library,\\nyou're completely on your own in every regard.\\nIn order to read a file you need to dive into system calls and write code for string parsing.\\nI chose a different option however: format the input to work directly in our program.\"}]\n15:[\"$\",\"p\",null,{\"children\":[\"Our input is just a series of numbers separated by a newline.\\nIn fact, if you replace the newlines with \",[\"$\",\"code\",null,{\"children\":\"-1\"}],\",\\nour input suddenly becomes a contiguous array of numbers.\\nAll you have to do is throw it in a data section, give it a label,\\nand append \",[\"$\",\"code\",null,{\"children\":\".long\"}],\" in front of each number, and you've got yourself\\na bona fide array of signed integers immediately ready to be used:\"]}]\n"])</script><script>self.__next_f.push([1,"16:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-x86asm\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".data\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".global\"}],\" nums\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"nums:\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"3000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" -\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"4000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" -\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"5000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"6000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" -\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"7000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"8000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"9000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" -\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"10000\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; and so on...\"}],\"\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"17:[\"$\",\"p\",null,{\"children\":\"This can be linked directly into our program,\\nand we don't have to spend\\nany time at all parsing a file.\"}]\n18:[\"$\",\"h3\",null,{\"children\":\"Solving Part 1\"}]\n19:[\"$\",\"p\",null,{\"children\":\"The first real problem we run into is that it's\\nkind of difficult to even know what your assembly\\nprogram is doing, or if it's even working at all.\"}]\n1a:[\"$\",\"p\",null,{\"children\":\"Let's write the most minimal program in assembly possible,\\nand then we can set up a small\\nC driver to call our function and print the result.\\nWhen we build and link these two programs together, we have\\na system where we can write our solution in assembly,\\nbut also see the result of our code.\"}]\n"])</script><script>self.__next_f.push([1,"1b:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-x86asm\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".text\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\"\\n.global\"}],\" part1\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"part1:\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; the return value is expected in the EAX register in x86 calling convention\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; this is equal to \\\"return 42;\\\" in C\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$42\"}],\", %eax\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"ret\"}],\"\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"1c:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-c\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":[\"#\",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"include\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-string\",\"children\":\"\\\"stdio.h\\\"\"}]]}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"extern\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"part1\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\";\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"main\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\" {\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" p1 = part1();\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-built_in\",\"children\":\"printf\"}],\"(\",[\"$\",\"span\",null,{\"className\":\"hljs-string\",\"children\":\"\\\"%d\\\\n\\\"\"}],\", p1);\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"return\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n}\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"1d:[\"$\",\"p\",null,{\"children\":\"After a lot of trial and error + painful debugging,\\nI wrote enough code\\nto complete the first part of the problem\\nand be awarded with the first star:\"}]\n"])</script><script>self.__next_f.push([1,"1e:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-x86asm\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".global\"}],\" part1\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"part1:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %ebx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; highestSoFar\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %ecx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; counter\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.ResetAndAdd:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; accumulator\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.AddNext:\"}],\"\\n    leaq nums(%rip), %rax \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; get start address of our number array\"}],\"\\n    addq %rcx,  %rax \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; add our current offset\"}],\"\\n    movl (%rax), %eax \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; move the value of that address into eax\"}],\"\\n    addl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$4\"}],\", %ecx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; add 4 (bytes) to our counter, effectively i++\"}],\"\\n\\n    cmpl $-\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\", %eax \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; test to see if the number is a newline (-1)\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"je\"}],\" .NextElf \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; if -1, run our code for the next elf.\"}],\"\\n\\n    addl %eax, %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; otherwise, add the number to our accumulator\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .AddNext\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.NextElf:\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; if we have looked through all the numbers, return\"}],\"\\n    cmpl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$8948\"}],\", %ecx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; 8948 = len(nums) * 4 bytes per number\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jge\"}],\" .Finish \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; if we've looked at all the input, return\"}],\"\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; check if new sum is \u003e ebx\"}],\"\\n    cmpl %ebx, %edx\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jle\"}],\" .ResetAndAdd\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; it is greater than\"}],\"\\n    movl %edx, %ebx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; move new value into highestSoFar\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .ResetAndAdd\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.Finish:\"}],\"\\n    movl %ebx, %eax \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; return highestSoFar\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"ret\"}],\"\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"1f:[\"$\",\"p\",null,{\"children\":\"This assembly function written in C would look like this:\"}]\n"])</script><script>self.__next_f.push([1,"20:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-c\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"extern\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" nums[];\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"part1\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\" {\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" highestSoFar = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" accumulator = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"for\"}],\" (\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" i = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"; i \u003c \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2237\"}],\"; i++) {\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" number = nums[i];\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (number == \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"-1\"}],\") {\\n      \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (accumulator \u003e highestSoFar) {\\n        highestSoFar = accumulator;\\n      }\\n      accumulator = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n      \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"continue\"}],\";\\n    }\\n\\n    accumulator += number;\\n  }\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"return\"}],\" highestSoFar;\\n}\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"21:[\"$\",\"p\",null,{\"children\":\"Even while writing this small assembly program,\\nI shot myself in the foot several times.\\nWhen you screw up in assembly, you have nobody to help you.\\nThere is no compiler or tooling to hold your hand.\\nIt is just you vs. pure logic, and the computer will do exactly\\nwhat you tell it to do, even to a horrible fault.\"}]\n22:[\"$\",\"h4\",null,{\"children\":\"Who? What? When? Where? Why?\"}]\n"])</script><script>self.__next_f.push([1,"23:[\"$\",\"p\",null,{\"children\":[\"There is also a surprising amount of context that you must learn if you're new to assembly.\\nWhich registers are you able to use safely?\\nYou really only have four registers available to you:\\n\",[\"$\",\"code\",null,{\"children\":\"eax\"}],\", \",[\"$\",\"code\",null,{\"children\":\"ebx\"}],\", \",[\"$\",\"code\",null,{\"children\":\"ecx\"}],\", and \",[\"$\",\"code\",null,{\"children\":\"edx\"}],\".\\nThese are the four general registers and how the programmer uses them defines\\ntheir meaning.\\nBefore I realized that you can really only work with these, I tried\\nusing \",[\"$\",\"code\",null,{\"children\":\"esp\"}],\" for example and my program would not work.\\nWhy? I was modifying the stack pointer unknowingly to use the register in my own calculations and that is a big no-no.\\nEven though these registers are special (and should be off-limits), nothing is there to stop you from using them.\\nRealizing that I only had four registers available felt very limiting.\\nThat's when you realize you have to start using the stack or creating variables in data sections to start holding your calculations and move those values in and out of registers.\"]}]\n"])</script><script>self.__next_f.push([1,"24:[\"$\",\"p\",null,{\"children\":[\"This means that you have to juggle so much more \",[\"$\",\"strong\",null,{\"children\":\"context\"}],\" in your head about your program.\\nIf you have a variable that has some meaning, along with remembering \",[\"$\",\"strong\",null,{\"children\":\"what\"}],\" it is, you also have to remember \",[\"$\",\"strong\",null,{\"children\":\"where\"}],\" it is.\\nThis realization shows you just how much we take for granted in our high level languages.\"]}]\n25:[\"$\",\"p\",null,{\"children\":[\"For example, in C we can define a variable, do other stuff, and then add to that variable later.\\nWe never have to care \",[\"$\",\"em\",null,{\"children\":\"where\"}],\" that variable is in memory.\\nIs it already in a register? Is it on the stack, or in a data section?\\nDo I need to move it into a register before I can work with it?\\nWhich registers am I not using at this exact spot in my program?\\nWho cares.\\nWe don't have to mentally keep track of it,\\nThe compiler abstracts that away for us:\"]}]\n26:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-c\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" x = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"// ...\"}],\"\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"// What a luxury! We don't have to think about\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"// where 'x' is at all. We just use it.\"}],\"\\nx += \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"40\"}],\";\\n\"]}]}]\n27:[\"$\",\"p\",null,{\"children\":[\"In assembly, it is 100% up to you to determine how your program uses memory at every level, and where that memory is stored. Is it on the stack or in a register? Is that variable at offset \",[\"$\",\"code\",null,{\"children\":\"4\"}],\" or \",[\"$\",\"code\",null,{\"children\":\"8\"}],\" on the stack again? I can't remember.\\nNow imagine that you have loaded a variable from an incorrect memory address.\\nYou've just broken your program in a non-obvious way"])</script><script>self.__next_f.push([1,",\\nand the only way to realize it is through a painful amount of debugging.\"]}]\n28:[\"$\",\"h4\",null,{\"children\":\"One Missing Character to Ruin Your Day\"}]\n29:[\"$\",\"p\",null,{\"children\":[\"While solving part 1, I made an assumption that bit me hard:\\nI assumed the default jump instruction was \",[\"$\",\"code\",null,{\"children\":\"jp\"}],\". Spoiler alert: it isn't.\"]}]\n2a:[\"$\",\"p\",null,{\"children\":[\"It took me tearing apart my whole program to realize my problem: My jump instruction isn't working how I expected it to. This led me to find out that the jump instruction I wanted is actually \",[\"$\",\"code\",null,{\"children\":\"jmp\"}],\".\\n\",[\"$\",\"code\",null,{\"children\":\"jp\"}],\" was a real instruction, but it was short for \",[\"$\",\"code\",null,{\"children\":\"Jump short if parity\"}],\", only branching if the parity flag was set.\\nOne innocent missing \",[\"$\",\"code\",null,{\"children\":\"m\"}],\" caused me a lot of headache.\"]}]\n2b:[\"$\",\"p\",null,{\"children\":\"Control flow instructions are another thing that you just never have to care about in a high level language.\\nThe compiler will always create the correct one based on your code.\"}]\n2c:[\"$\",\"h3\",null,{\"children\":\"Solving Part 2\"}]\n2d:[\"$\",\"p\",null,{\"children\":\"Typically, the second part of an AOC problem will ask for more, and expose faults in the speed of your code or the flexibility of your implementation.\\nThe second part for Day 1 was no exception:\"}]\n2e:[\"$\",\"blockquote\",null,{\"children\":[\"\\n\",[\"$\",\"p\",null,{\"children\":\"Find the top three Elves carrying the most Calories. How many Calories are those Elves carrying in total?\"}],\"\\n\"]}]\n2f:[\"$\",\"p\",null,{\"children\":\"And boy, assembly language is the least flexible language out there.\\nFortunately it wasn't too bad to adapt the program\\nto handle the top three elves instead of one.\"}]\n30:[\"$\",\"p\",null,{\"children\":\"Instead of re-calculating everything in another function,\\nI add a data section to hold the results,\\nand then calculate the top three elves in part 1 while only returning the top one.\\nIn part two I then take the top three from the c"])</script><script>self.__next_f.push([1,"alculations and return their sum.\"}]\n"])</script><script>self.__next_f.push([1,"31:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-x86asm\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".data\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"ans:\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\".long\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\"\\n.text\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\"\\n.global\"}],\" part1\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"part1:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %ebx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; highestSoFar\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %ecx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; counter\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.ResetAndAdd:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; accumulator\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.AddNext:\"}],\"\\n    leaq nums(%rip), %rax\\n    addq %rcx,  %rax\\n    movl (%rax), %eax\\n    addl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$4\"}],\", %ecx\\n\\n    cmpl $-\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\", %eax\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"je\"}],\" .NextElf\\n\\n    addl %eax, %edx\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .AddNext\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n.NextElf:\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; iif we have looked through all the numbers, return\"}],\"\\n    cmpl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$8948\"}],\", %ecx\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jge\"}],\" .Finish\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; check if new sum is \u003e ans[0] through ans[2]\"}],\"\\n    movl ans(%rip), %ebx\\n    cmpl %ebx, %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; compare ans[0] to accumulator\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jle\"}],\" .Ans1\\n    movl %edx, ans(%rip)\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .ResetAndAdd\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"    .Ans1:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"4\"}],\"+ans(%rip), %ebx\\n    cmpl %ebx, %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; compare ans[1] to accumulator\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jle\"}],\" .Ans2\\n    movl %edx, \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"4\"}],\"+ans(%rip)\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .ResetAndAdd\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"    .Ans2:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"8\"}],\"+ans(%rip), %ebx\\n    cmpl %ebx, %edx \",[\"$\",\"span\",null,{\"className\":\"hljs-comment\",\"children\":\"; compare ans[2] to accumulator\"}],\"\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jle\"}],\" .ResetAndAdd\\n    movl %edx, \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"8\"}],\"+ans(%rip)\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"jmp\"}],\" .ResetAndAdd\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"\\n\\n.Finish:\"}],\"\\n    movl ans(%rip), %eax\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"ret\"}],\"\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-meta\",\"children\":\"\\n.global\"}],\" part2\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-symbol\",\"children\":\"part2:\"}],\"\\n    movl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"$$0\"}],\", %eax\\n    addl ans(%rip), %eax\\n    addl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"4\"}],\"+ans(%rip), %eax\\n    addl \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"8\"}],\"+ans(%rip), %eax\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"ret\"}],\"\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"32:[\"$\",\"p\",null,{\"children\":\"This approach in assembly when literally translated to C would look like this:\"}]\n"])</script><script>self.__next_f.push([1,"33:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-c\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"extern\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" nums[];\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"3\"}],\"] = {\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\", \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\", \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"};\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"part1\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\" {\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" accumulator = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"for\"}],\" (\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" i = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"; i \u003c \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2237\"}],\"; i++) {\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" number = nums[i];\\n\\n    \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (number == \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"-1\"}],\") {\\n      \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (accumulator \u003e ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"]) {\\n        ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"] = accumulator;\\n      } \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"else\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (accumulator \u003e ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"]) {\\n        ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"] = accumulator;\\n      } \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"else\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"if\"}],\" (accumulator \u003e ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2\"}],\"]) {\\n        ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2\"}],\"] = accumulator;\\n      }\\n      accumulator = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n      \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"continue\"}],\";\\n    }\\n\\n    accumulator += number;\\n  }\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"return\"}],\" ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"];\\n}\\n\\n\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"part2\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\" {\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"return\"}],\" ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"] + ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1\"}],\"] + ans[\",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"2\"}],\"];\\n}\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"34:[\"$\",\"p\",null,{\"children\":\"And while this C code is somewhat ugly, it accurately\\ndemonstrates the logic of how the assembly code I wrote works.\\nI was quite happy to be able to solve both parts in x86.\"}]\n35:[\"$\",\"p\",null,{\"children\":[\"Naturally I wanted to know how long it took to calculate\\nthe answer.\\nAfter trying to time \",[\"$\",\"code\",null,{\"children\":\"part1()\"}],\" with C's \",[\"$\",\"code\",null,{\"children\":\"clock\"}],\",\\nit was completing so fast that \",[\"$\",\"code\",null,{\"children\":\"clock\"}],\" returned the same\\nnumber both before and after calling \",[\"$\",\"code\",null,{\"children\":\"part1()\"}],\".\"]}]\n36:[\"$\",\"p\",null,{\"children\":[\"I read about methods to get around this, and one\\nsuggested running the function in a loop \",[\"$\",\"code\",null,{\"children\":\"n\"}],\" number of times\\nand then dividing the time spent by \",[\"$\",\"code\",null,{\"children\":\"n\"}],\":\"]}]\n"])</script><script>self.__next_f.push([1,"37:[\"$\",\"pre\",null,{\"children\":[\"$\",\"code\",null,{\"className\":\"hljs language-c\",\"children\":[[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-title function_\",\"children\":\"main\"}],[\"$\",\"span\",null,{\"className\":\"hljs-params\",\"children\":\"()\"}],\" {\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"clock_t\"}],\" start, end;\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"double\"}],\" cpu_time_used;\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" p1 = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n\\n  start = clock();\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"for\"}],\" (\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" i = \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\"; i \u003c \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1000000\"}],\"; i++) {\\n    p1 = part1();\\n  }\\n  end = clock();\\n  cpu_time_used = ((\",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"double\"}],\")(end - start)) / CLOCKS_PER_SEC / \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"1000000\"}],\";\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-built_in\",\"children\":\"printf\"}],\"(\",[\"$\",\"span\",null,{\"className\":\"hljs-string\",\"children\":\"\\\"%d\\\\n\\\"\"}],\", p1);\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-type\",\"children\":\"int\"}],\" p2 = part2();\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-built_in\",\"children\":\"printf\"}],\"(\",[\"$\",\"span\",null,{\"className\":\"hljs-string\",\"children\":\"\\\"%d\\\\n\\\"\"}],\", p2);\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-built_in\",\"children\":\"printf\"}],\"(\",[\"$\",\"span\",null,{\"className\":\"hljs-string\",\"children\":\"\\\"Done in %.50f seconds\\\\n\\\"\"}],\", cpu_time_used);\\n\\n  \",[\"$\",\"span\",null,{\"className\":\"hljs-keyword\",\"children\":\"return\"}],\" \",[\"$\",\"span\",null,{\"className\":\"hljs-number\",\"children\":\"0\"}],\";\\n}\\n\"]}]}]\n"])</script><script>self.__next_f.push([1,"38:[\"$\",\"p\",null,{\"children\":[\"Which outputs:\\n\",[\"$\",\"code\",null,{\"children\":\"Done in 0.000001135999 seconds\"}],\"\\non my average 2.8Ghz Intel i7 laptop.\"]}]\n39:[\"$\",\"p\",null,{\"children\":\"It's not clear to me how much time is added\\nby the time it takes to loop and call the function,\\nbut even with that added overhead it seems to be completing in\\nan average of 1 microsecond.\\nThat's pretty fast.\\nAn example Rust program that someone else wrote for part 1\\nwas able to solve it in 27 microseconds, but that included\\nparsing the input, whereas my version has no input parsing.\"}]\n3a:[\"$\",\"h2\",null,{\"children\":\"Takeaways\"}]\n3b:[\"$\",\"p\",null,{\"children\":\"Programming in assembly language\\ngives me a new-found respect for how much high-level languages give us by abstracting away all the tedium and potential room for error.\\nLow level languages such as C or C++ have a bad reputation for allowing people to shoot themselves in the foot,\\nbut the room for error in assembly feels exponentially greater.\\nHigh level languages protect us from a huge amount of potential problems that most of us probably didn't realize existed in the first place.\\nThis isn't even taking into consideration garbage collection\\nand other niceties even higher-level languages offer.\"}]\n3c:[\"$\",\"p\",null,{\"children\":\"Writing in C again after writing in x86 feels like going from crawling\\non the ground through broken glass\\nto riding a bike down the road with a nice breeze on a summer day.\"}]\n"])</script></body></html>
